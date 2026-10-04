@@ -90,6 +90,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const [newRosterDialogOpen, setNewRosterDialogOpen] = useState(false);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState("");
+  const [copiedShareLink, setCopiedShareLink] = useState("");
   const rosterTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const memberTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const pendingRosterUpdates = useRef(new Map<string, Partial<Roster>>());
@@ -98,14 +99,25 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   useEffect(() => {
     let cancelled = false;
     void Promise.all([apiRequest<Roster[]>("/rosters"), apiRequest<WarbandOption[]>("/warbands"), apiRequest<CampaignOption[]>("/campaigns")])
-      .then(([items, availableWarbands, availableCampaigns]) => {
+      .then(async ([items, availableWarbands, availableCampaigns]) => {
+        const code = new URL(window.location.href).searchParams.get("share");
+        let shared: Roster | null = null;
+        let shareError = "";
+        if (code !== null) {
+          try {
+            shared = await apiRequest<Roster>("/shared-rosters/join", "POST", { code });
+          } catch (requestError) {
+            shareError = requestError instanceof Error ? requestError.message : "Could not open shared warband.";
+          }
+        }
         if (cancelled) return;
         setCampaigns(availableCampaigns);
-        setActiveCampaignId(items[0] ? rosterKey(items[0]) : availableCampaigns[0]?.id ?? FREEBUILD);
+        setActiveCampaignId(shared ? rosterKey(shared) : items[0] ? rosterKey(items[0]) : availableCampaigns[0]?.id ?? FREEBUILD);
         setRosters(items);
+        if (shared && shared.ownerId !== user.id) setOtherRosters([shared]);
         setWarbands(availableWarbands);
-        setActiveRosterId(items[0]?.id ?? "");
-        setError("");
+        setActiveRosterId(shared?.id ?? items[0]?.id ?? "");
+        setError(shareError);
       })
       .catch((requestError: unknown) => {
         if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Could not load rosters.");
@@ -123,15 +135,17 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
-      activeCampaignId && activeCampaignId !== FREEBUILD ? apiRequest<Roster[]>(`/campaigns/${activeCampaignId}/rosters`) : Promise.resolve([] as Roster[]),
+      campaigns.some((item) => item.id === activeCampaignId) ? apiRequest<Roster[]>(`/campaigns/${activeCampaignId}/rosters`) : Promise.resolve([] as Roster[]),
       apiRequest<Roster[]>("/shared-rosters"),
     ]).then(([mates, shared]) => {
       if (cancelled) return;
       const seen = new Set<string>();
       setOtherRosters([...mates, ...shared].filter((item) => item.ownerId !== user.id && !seen.has(item.id) && seen.add(item.id)));
-    }).catch(() => { if (!cancelled) setOtherRosters([]); });
+    }).catch((requestError: unknown) => {
+      if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Could not load shared warbands.");
+    });
     return () => { cancelled = true; };
-  }, [activeCampaignId, user.id]);
+  }, [activeCampaignId, campaigns, user.id]);
 
   const campaignRosters = rosters.filter((item) => rosterKey(item) === activeCampaignId);
   const visibleOthers = otherRosters.filter((item) => rosterKey(item) === activeCampaignId || (item.campaignId && !campaigns.some((c) => c.id === item.campaignId)));
@@ -139,6 +153,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const activeCampaign = activeCampaignId === FREEBUILD ? freebuildOption : campaigns.find((item) => item.id === activeCampaignId) ?? null;
   const roster = viewing ?? campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
   const readOnly = viewing !== null;
+  const shareLink = roster.shareCode
+    ? `${window.location.origin}/?share=${encodeURIComponent(roster.shareCode)}`
+    : "";
   const members = roster.members;
   const selectedMember = members.find((item) => item.id === activeMemberId);
   const heroes = members.filter((member) => member.role === "Hero").length;
@@ -673,7 +690,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   async function redeemShare(code: string) {
     try {
       const shared = await apiRequest<Roster>("/shared-rosters/join", "POST", { code });
-      setOtherRosters((current) => current.some((item) => item.id === shared.id) ? current : [...current, shared]);
+      if (shared.ownerId !== user.id) {
+        setOtherRosters((current) => current.some((item) => item.id === shared.id) ? current : [...current, shared]);
+      }
       setActiveCampaignId(rosterKey(shared));
       setActiveRosterId(shared.id);
       setActiveMemberId(null);
@@ -689,9 +708,20 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       const updated = await apiRequest<Roster>(`/rosters/${roster.id}/share`, roster.shareCode ? "DELETE" : "POST");
       setRosters((current) => current.map((item) => item.id === roster.id ? { ...item, shareCode: updated.shareCode } : item));
+      setCopiedShareLink("");
       setError("");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not update sharing.");
+    }
+
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopiedShareLink(shareLink);
+    } catch (copyError) {
+      setError(copyError instanceof Error ? `Could not copy share link: ${copyError.message}` : "Could not copy share link. Copy the displayed link manually.");
     }
   }
 
@@ -838,7 +868,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
           {!readOnly && roster.id && (
             <div className="share-bar">
               <button type="button" className="outline-button" onClick={() => void toggleShare()}>{roster.shareCode ? "Stop sharing" : "Share warband"}</button>
-              {roster.shareCode && <span>Share code: <code>{roster.shareCode}</code></span>}
+              {roster.shareCode && <>
+                <a href={shareLink}>{shareLink}</a>
+                <button type="button" className="outline-button" onClick={() => void copyShareLink()}>{copiedShareLink === shareLink ? "Link copied" : "Copy link"}</button>
+                <span>Share code: <code>{roster.shareCode}</code></span>
+              </>}
             </div>
           )}
           <fieldset className="readonly-fieldset" disabled={readOnly}>
