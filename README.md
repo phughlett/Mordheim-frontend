@@ -1,87 +1,60 @@
-# Welcome to React Router!
+# Mordheim frontend
 
-A modern, production-ready template for building full-stack React applications using React Router.
+React Router SPA with browser-side authentication and API requests.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Development
 
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
+```sh
+npm ci
 npm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The development server listens on port 5173. Set `VITE_API_BASE_URL` to the
+backend's API URL (by default `http://localhost:4000/api`).
 
-## Building for Production
+## Build and validate
 
-Create a production build:
-
-```bash
+```sh
+npm run typecheck
 npm run build
+npm start
 ```
 
-## Deployment
+`npm start` previews the static build on port 3000 for local testing only.
+Production uses Nginx, not Vite's preview server.
 
-### Docker Deployment
+## Docker deployment
 
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
+```sh
+docker build --build-arg VITE_API_BASE_URL=/api -t mordheim-frontend .
+docker run --rm -p 3000:3000 mordheim-frontend
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+The multi-stage [Dockerfile](./Dockerfile) uses Node only to build the SPA.
+The runtime is unprivileged Nginx serving `build/client` on port 3000; there
+is no Node process or npm installation in the runtime image.
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+For production, put the shared HTTPS reverse proxy in front of this container.
+It must route `/api/` to the backend and all other application requests here.
+The standalone container does not proxy API requests. For standalone local
+testing, build with `VITE_API_BASE_URL=http://localhost:4000/api` instead.
+The API URL is baked into the build; changing it requires rebuilding the image.
 
-### DIY Deployment
+[nginx.conf](./nginx.conf) provides:
 
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
+- `/healthz` for container health checks.
+- Uncached HTML so clients receive the current asset references after deployment.
+- One-year immutable caching for fingerprinted `/assets/` files.
+- SPA fallback for application URLs and real 404s for missing assets/API paths.
 
-Make sure to deploy the output of `npm run build`
+The production stack is maintained in
+[hughlett-web-deploy](https://github.com/phughlett/hughlett-web-deploy).
 
+Run the isolated container smoke test after building an image:
+
+```sh
+bash test/container.test.sh mordheim-frontend
 ```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
 
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+It checks non-root execution, health, caching, SPA fallback, and missing-resource
+404s using a temporary container and random loopback port.
