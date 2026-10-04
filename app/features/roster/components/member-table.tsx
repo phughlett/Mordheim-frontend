@@ -181,7 +181,7 @@ export function MemberTable({
                 </button>
               </td>
               <td>
-                {isPromotedHenchman(member) || member.role === "Hero" || (member.role === "Henchman" && member.warriorTypeId) ? (
+                {isPromotedHenchman(member) || member.role === "Hero" || Boolean(member.warriorTypeId) ? (
                   <span className="promoted-type">{member.type || "Hero type unassigned"}<small>{isPromotedHenchman(member) ? "Promoted" : member.role === "Henchman" ? "Group type fixed" : "Hire type fixed"}</small></span>
                 ) : (
                   <select

@@ -95,7 +95,7 @@ export function MemberDetailsPanel({
 }: MemberDetailsPanelProps) {
   const memberTypes = warriorTypes.filter((type) => type.category === member.role);
 
-  const isFixedType = isPromotedHenchman(member) || member.role === "Hero" || (member.role === "Henchman" && !!member.warriorTypeId);
+  const isFixedType = isPromotedHenchman(member) || member.role === "Hero" || Boolean(member.warriorTypeId);
 
   const hasSpells = Boolean(spellsData?.canShowSpellSection || spellsError);
 
