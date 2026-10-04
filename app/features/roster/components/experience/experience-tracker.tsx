@@ -3,6 +3,7 @@ import type { MemberRole } from "../../types";
 
 interface ExperienceTrackerProps {
   experience: string;
+  freebuild?: boolean;
   role: MemberRole;
   groupSize: number;
   minimumExperience?: number;
@@ -11,10 +12,10 @@ interface ExperienceTrackerProps {
   onChange: (experience: string) => void;
 }
 
-export function ExperienceTracker({ experience, role, groupSize, minimumExperience = 0, canGainExperience = true, experienceRule, onChange }: ExperienceTrackerProps) {
+export function ExperienceTracker({ experience, role, groupSize, minimumExperience = 0, canGainExperience = true, experienceRule, freebuild = false, onChange }: ExperienceTrackerProps) {
   const advanceThresholds = getAdvanceThresholds(role);
-  const maximumExperience = getMaximumExperience(role);
-  const trackedExperience = maximumExperience;
+  const maximumExperience = getMaximumExperience(role, freebuild);
+  const trackedExperience = getMaximumExperience(role);
   const currentExperience = Math.max(0, Number(experience) || 0);
   const nextAdvance = advanceThresholds.find((threshold) => threshold > currentExperience);
   const reachedAdvances = advanceThresholds.filter((threshold) => threshold <= currentExperience).length;

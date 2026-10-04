@@ -8,6 +8,7 @@ import { LadsGotTalentPanel } from "./lads-got-talent-panel";
 
 interface MemberDetailsPanelProps {
   member: Member;
+  freebuild?: boolean;
   warriorTypes: WarriorTypeOption[];
   selectedWarriorType: WarriorTypeOption | undefined;
   equipmentData: WarriorEquipmentData | null;
@@ -51,6 +52,7 @@ interface MemberDetailsPanelProps {
 
 export function MemberDetailsPanel({
   member,
+  freebuild = false,
   warriorTypes,
   selectedWarriorType,
   equipmentData,
@@ -139,6 +141,7 @@ export function MemberDetailsPanel({
       <AdvancementPanel
         leading={
       <ExperienceTracker
+        freebuild={freebuild}
         experience={member.experience}
         role={member.role}
         groupSize={member.groupSize}

@@ -912,6 +912,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             ) : (
               <div className="member-layout">
                 <MemberTable
+                  freebuild={!roster.campaignId}
                   members={roster.members}
                   activeMemberId={activeMemberId}
                   warriorTypes={warriorTypes}
@@ -927,6 +928,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   warriorTypeOptionLabel={warriorTypeOptionLabel}
                   activeDetails={selectedMember ? (
 <MemberDetailsPanel
+                  freebuild={!roster.campaignId}
                   member={selectedMember}
                   warriorTypes={warriorTypes}
                   selectedWarriorType={selectedWarriorType}

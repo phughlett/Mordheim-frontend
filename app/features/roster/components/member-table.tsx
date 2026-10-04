@@ -14,6 +14,7 @@ interface MemberTableProps {
   onUpdateMember: (memberId: string, changes: Partial<Member>) => void;
   onRemoveMember: (memberId: string) => void;
   allowedActions?: string[];
+  freebuild?: boolean;
   isPromotedHenchman: (member: Member) => boolean;
   isWarriorTypeAtLimit: (type: WarriorTypeOption, exceptMemberId?: string) => boolean;
   warriorTypeOptionLabel: (type: WarriorTypeOption, exceptMemberId?: string) => string;
@@ -91,6 +92,7 @@ export function MemberTable({
   onUpdateMember,
   onRemoveMember,
   allowedActions,
+  freebuild = false,
   isPromotedHenchman,
   isWarriorTypeAtLimit,
   warriorTypeOptionLabel,
@@ -209,7 +211,7 @@ export function MemberTable({
                   type="number"
                   inputMode="numeric"
                   min={getMinimumExperience(member, warriorTypes)}
-                  max={getMaximumExperience(member.role)}
+                  max={getMaximumExperience(member.role, freebuild)}
                   step={1}
                   value={member.experience}
                   disabled={experienceRestriction(member, warriorTypes) !== null || (allowedActions !== undefined && !allowedActions.includes("experience"))}
@@ -218,7 +220,7 @@ export function MemberTable({
                   onChange={(event) => {
                     const value = event.target.value;
                     const minimum = getMinimumExperience(member, warriorTypes);
-                    const maximum = getMaximumExperience(member.role);
+                    const maximum = getMaximumExperience(member.role, freebuild);
                     if (value === "" || /^\d+$/.test(value)) {
                       onUpdateMember(member.id, { experience: String(Math.min(maximum, Math.max(minimum, Number(value) || minimum))) });
                     }

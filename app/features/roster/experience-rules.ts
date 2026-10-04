@@ -7,7 +7,8 @@ export function getAdvanceThresholds(role: MemberRole) {
   return role === "Hero" ? heroAdvanceThresholds : henchmanAdvanceThresholds;
 }
 
-export function getMaximumExperience(role: MemberRole) {
+export function getMaximumExperience(role: MemberRole, freebuild = false) {
+  if (freebuild) return 2147483647;
   return role === "Hero" ? 90 : 14;
 }
 
