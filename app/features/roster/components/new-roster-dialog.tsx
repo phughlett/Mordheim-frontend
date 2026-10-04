@@ -7,16 +7,19 @@ interface NewRosterDialogProps {
   warbands: WarbandOption[];
   campaign: CampaignOption | null;
   onCancel: () => void;
-  onSubmit: (warbandId: string) => void;
+  onSubmit: (warbandId: string, gc?: number) => void;
 }
 
 export function NewRosterDialog({ open, submitting, warbands, campaign, onCancel, onSubmit }: NewRosterDialogProps) {
   const [warbandId, setWarbandId] = useState("");
+  const [gc, setGc] = useState("500");
   if (!open || !campaign) return null;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (warbandId) onSubmit(warbandId);
+    if (!warbandId) return;
+    if (campaign?.id === "freebuild") onSubmit(warbandId, Number(gc));
+    else onSubmit(warbandId);
   }
 
   return (
@@ -32,10 +35,15 @@ export function NewRosterDialog({ open, submitting, warbands, campaign, onCancel
               {warbands.map((warband) => <option key={warband.id} value={warband.id}>{warband.name}</option>)}
             </select>
           </label>
-          <p className="heading-note">{campaign.id === "freebuild" ? `Freebuild warbands start with ${campaign.maxGc} GC; adjust the treasury as you like.` : `Every warband in this campaign starts with ${campaign.maxGc} GC.`}</p>
+          {campaign.id === "freebuild" ? (
+            <label className="detail-field">
+              <span>STARTING GC</span>
+              <input required type="number" min={0} step={1} value={gc} onChange={(event) => setGc(event.target.value)} />
+            </label>
+          ) : <p className="heading-note">Every warband in this campaign starts with {campaign.maxGc} GC.</p>}
           <div className="new-roster-dialog-actions">
             <button className="outline-button" type="button" disabled={submitting} onClick={onCancel}>Cancel</button>
-            <button className="primary-button" type="submit" disabled={submitting || !warbandId}>
+            <button className="primary-button" type="submit" disabled={submitting || !warbandId || (campaign.id === "freebuild" && !(Number.isSafeInteger(Number(gc)) && gc !== "" && Number(gc) >= 0))}>
               {submitting ? "Creating..." : "Create warband"}
             </button>
           </div>

@@ -695,12 +695,12 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
-  async function createRoster(warbandId: string) {
+  async function createRoster(warbandId: string, gc?: number) {
     setCreatingRoster(true);
     try {
       setSaved(false);
       const campaignId = activeCampaignId;
-      const next = await apiRequest<Roster>("/rosters", "POST", { name: "Untitled Warband", warbandId, ...(campaignId === FREEBUILD ? {} : { campaignId }) });
+      const next = await apiRequest<Roster>("/rosters", "POST", { name: "Untitled Warband", warbandId, ...(campaignId === FREEBUILD ? { treasury: gc ?? 500 } : { campaignId }) });
       setCampaigns((current) => current.map((item) => item.id === campaignId ? { ...item, warbandCount: item.warbandCount + 1 } : item));
       setRosters((current) => [...current, next]);
       setActiveRosterId(next.id);
