@@ -50,6 +50,10 @@ function rosterModelCount(roster: Roster) {
   return roster.members.reduce((total, member) => total + (member.role === "Hired Sword" ? 0 : member.role === "Henchman" ? member.groupSize : 1), 0);
 }
 
+const FREEBUILD = "freebuild";
+const freebuildOption: CampaignOption = { id: FREEBUILD, name: "Freebuild (no campaign)", maxGc: 500, warbandCount: 0 };
+const rosterKey = (item: Roster) => item.campaignId ?? FREEBUILD;
+
 export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const [rosters, setRosters] = useState<Roster[]>([]);
   const [otherRosters, setOtherRosters] = useState<Roster[]>([]);
@@ -97,7 +101,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       .then(([items, availableWarbands, availableCampaigns]) => {
         if (cancelled) return;
         setCampaigns(availableCampaigns);
-        setActiveCampaignId(items[0]?.campaignId ?? availableCampaigns[0]?.id ?? "");
+        setActiveCampaignId(items[0] ? rosterKey(items[0]) : availableCampaigns[0]?.id ?? FREEBUILD);
         setRosters(items);
         setWarbands(availableWarbands);
         setActiveRosterId(items[0]?.id ?? "");
@@ -119,7 +123,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
-      activeCampaignId ? apiRequest<Roster[]>(`/campaigns/${activeCampaignId}/rosters`) : Promise.resolve([] as Roster[]),
+      activeCampaignId && activeCampaignId !== FREEBUILD ? apiRequest<Roster[]>(`/campaigns/${activeCampaignId}/rosters`) : Promise.resolve([] as Roster[]),
       apiRequest<Roster[]>("/shared-rosters"),
     ]).then(([mates, shared]) => {
       if (cancelled) return;
@@ -129,9 +133,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     return () => { cancelled = true; };
   }, [activeCampaignId, user.id]);
 
-  const campaignRosters = rosters.filter((item) => item.campaignId === activeCampaignId);
-  const viewing = otherRosters.find((item) => item.id === activeRosterId && (item.campaignId === activeCampaignId || !campaignRosters.some((own) => own.id === item.id))) ?? null;
-  const activeCampaign = campaigns.find((item) => item.id === activeCampaignId) ?? null;
+  const campaignRosters = rosters.filter((item) => rosterKey(item) === activeCampaignId);
+  const visibleOthers = otherRosters.filter((item) => rosterKey(item) === activeCampaignId || (item.campaignId && !campaigns.some((c) => c.id === item.campaignId)));
+  const viewing = visibleOthers.find((item) => item.id === activeRosterId) ?? null;
+  const activeCampaign = activeCampaignId === FREEBUILD ? freebuildOption : campaigns.find((item) => item.id === activeCampaignId) ?? null;
   const roster = viewing ?? campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
   const readOnly = viewing !== null;
   const members = roster.members;
@@ -635,7 +640,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
 
   function selectCampaign(campaignId: string) {
     setActiveCampaignId(campaignId);
-    setActiveRosterId(rosters.find((item) => item.campaignId === campaignId)?.id ?? "");
+    setActiveRosterId(rosters.find((item) => rosterKey(item) === campaignId)?.id ?? "");
     setActiveMemberId(null);
   }
 
@@ -669,7 +674,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       const shared = await apiRequest<Roster>("/shared-rosters/join", "POST", { code });
       setOtherRosters((current) => current.some((item) => item.id === shared.id) ? current : [...current, shared]);
-      if (shared.campaignId) setActiveCampaignId(shared.campaignId);
+      setActiveCampaignId(rosterKey(shared));
       setActiveRosterId(shared.id);
       setActiveMemberId(null);
       setError("");
@@ -695,7 +700,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       setSaved(false);
       const campaignId = activeCampaignId;
-      const next = await apiRequest<Roster>("/rosters", "POST", { name: "Untitled Warband", warbandId, campaignId });
+      const next = await apiRequest<Roster>("/rosters", "POST", { name: "Untitled Warband", warbandId, ...(campaignId === FREEBUILD ? {} : { campaignId }) });
       setCampaigns((current) => current.map((item) => item.id === campaignId ? { ...item, warbandCount: item.warbandCount + 1 } : item));
       setRosters((current) => [...current, next]);
       setActiveRosterId(next.id);
@@ -808,9 +813,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     <div className="roster-app">
       <RosterSidebar
         rosters={campaignRosters}
-        otherRosters={otherRosters.filter((item) => item.campaignId === activeCampaignId || !item.campaignId || !campaigns.some((c) => c.id === item.campaignId))}
+        otherRosters={visibleOthers}
         onRedeemShare={redeemShare}
-        campaigns={campaigns}
+        campaigns={[freebuildOption, ...campaigns]}
         activeCampaignId={activeCampaignId}
         onSelectCampaign={selectCampaign}
         onCreateCampaign={createCampaign}
@@ -846,7 +851,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             onDelete={removeRoster}
             onCreate={openNewRosterDialog}
           />
-          <CampaignBar roster={roster} onChange={replaceRoster} onError={setError} request={(path, method, body) => apiRequest<Roster>(path, method, body)} />
+          {roster.campaignId && <CampaignBar roster={roster} onChange={replaceRoster} onError={setError} request={(path, method, body) => apiRequest<Roster>(path, method, body)} />}
           {roster.campaignId && (roster.campaign?.phase === "pre_battle" || roster.campaign?.phase === "battle") && (
             <BattlePanel campaignId={roster.campaignId} rosters={campaignRosters} request={apiRequest} onRostersChanged={refreshRosters} onError={setError} />
           )}

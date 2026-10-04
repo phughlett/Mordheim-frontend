@@ -80,7 +80,7 @@ export function RosterSidebar({
               type="button"
               onClick={() => { onSelectCampaign(item.id); setOpen(false); }}
             >
-              <strong>{item.name}</strong><small>{item.maxGc} GC</small>
+              <strong>{item.name}</strong><small>{item.id === "freebuild" ? "no limit" : `${item.maxGc} GC`}</small>
             </button>
           ))}
           {creating ? (

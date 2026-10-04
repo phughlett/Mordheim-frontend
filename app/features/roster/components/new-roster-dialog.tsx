@@ -32,7 +32,7 @@ export function NewRosterDialog({ open, submitting, warbands, campaign, onCancel
               {warbands.map((warband) => <option key={warband.id} value={warband.id}>{warband.name}</option>)}
             </select>
           </label>
-          <p className="heading-note">Every warband in this campaign starts with {campaign.maxGc} GC.</p>
+          <p className="heading-note">{campaign.id === "freebuild" ? `Freebuild warbands start with ${campaign.maxGc} GC; adjust the treasury as you like.` : `Every warband in this campaign starts with ${campaign.maxGc} GC.`}</p>
           <div className="new-roster-dialog-actions">
             <button className="outline-button" type="button" disabled={submitting} onClick={onCancel}>Cancel</button>
             <button className="primary-button" type="submit" disabled={submitting || !warbandId}>
