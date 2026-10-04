@@ -399,6 +399,9 @@ export interface CampaignOption {
 }
 
 export interface Roster {
+  ownerId?: string;
+  player?: string;
+  shareCode?: string | null;
   campaignId?: string | null;
   campaignName?: string | null;
   campaignMaxGc?: number | null;

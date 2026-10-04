@@ -3,6 +3,8 @@ import type { CampaignOption, Roster } from "../types";
 
 interface RosterSidebarProps {
   rosters: Roster[];
+  otherRosters: Roster[];
+  onRedeemShare: (code: string) => Promise<boolean>;
   activeRosterId: string;
   saved: boolean;
   onSelectRoster: (rosterId: string) => void;
@@ -23,6 +25,8 @@ function rosterModelCount(roster: Roster) {
 
 export function RosterSidebar({
   rosters,
+  otherRosters,
+  onRedeemShare,
   activeRosterId,
   saved,
   onSelectRoster,
@@ -41,6 +45,7 @@ export function RosterSidebar({
   const [name, setName] = useState("");
   const [maxGc, setMaxGc] = useState("500");
   const [joinCode, setJoinCode] = useState("");
+  const [shareCode, setShareCode] = useState("");
   const activeCampaign = campaigns.find((item) => item.id === activeCampaignId);
   const amount = Number(maxGc);
   const formValid = name.trim() !== "" && maxGc !== "" && Number.isSafeInteger(amount) && amount >= 0;
@@ -112,6 +117,24 @@ export function RosterSidebar({
           </button>
         ))}
       </nav>
+      {otherRosters.length > 0 && (
+        <>
+          <div className="sidebar-label roster-label">OTHER PLAYERS <span>{otherRosters.length}</span></div>
+          <nav className="roster-nav" aria-label="Other players' warbands">
+            {otherRosters.map((item) => (
+              <button className={`roster-nav-item ${item.id === activeRosterId ? "is-active" : ""}`} key={item.id} onClick={() => onSelectRoster(item.id)} type="button">
+                <span className="nav-emblem">{(item.warband || item.name).slice(0, 1).toUpperCase()}</span>
+                <span className="nav-copy"><strong>{item.name || "Untitled Warband"}</strong><small>{item.player} · view only</small></span>
+                <span className="nav-count">{rosterModelCount(item)}</span>
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
+      <form className="share-join" onSubmit={async (event) => { event.preventDefault(); if (shareCode.trim() && await onRedeemShare(shareCode.trim())) setShareCode(""); }}>
+        <input aria-label="Share code" placeholder="Shared warband code" value={shareCode} onChange={(event) => setShareCode(event.target.value)} />
+        <button type="submit" disabled={!shareCode.trim()}>Add</button>
+      </form>
       <button className="new-roster-link" disabled={!canCreateRoster} onClick={onCreateRoster} type="button"><span>+</span> New warband</button>
       <div className="sidebar-footer sidebar-user"><span>{username}</span><button type="button" onClick={onLogout}>Log out</button></div>
       <div className="sidebar-footer"><span className="status-dot" /> Postgres <span className="save-status">{saved ? "Saved" : "Saving"}</span></div>

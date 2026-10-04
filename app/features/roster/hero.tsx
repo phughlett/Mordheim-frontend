@@ -52,6 +52,7 @@ function rosterModelCount(roster: Roster) {
 
 export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const [rosters, setRosters] = useState<Roster[]>([]);
+  const [otherRosters, setOtherRosters] = useState<Roster[]>([]);
   const [warbands, setWarbands] = useState<WarbandOption[]>([]);
   const [warriorTypes, setWarriorTypes] = useState<WarriorTypeOption[]>([]);
   const [memberEquipment, setMemberEquipment] = useState<WarriorEquipmentData | null>(null);
@@ -115,9 +116,24 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      activeCampaignId ? apiRequest<Roster[]>(`/campaigns/${activeCampaignId}/rosters`) : Promise.resolve([] as Roster[]),
+      apiRequest<Roster[]>("/shared-rosters"),
+    ]).then(([mates, shared]) => {
+      if (cancelled) return;
+      const seen = new Set<string>();
+      setOtherRosters([...mates, ...shared].filter((item) => item.ownerId !== user.id && !seen.has(item.id) && seen.add(item.id)));
+    }).catch(() => { if (!cancelled) setOtherRosters([]); });
+    return () => { cancelled = true; };
+  }, [activeCampaignId, user.id]);
+
   const campaignRosters = rosters.filter((item) => item.campaignId === activeCampaignId);
+  const viewing = otherRosters.find((item) => item.id === activeRosterId && (item.campaignId === activeCampaignId || !campaignRosters.some((own) => own.id === item.id))) ?? null;
   const activeCampaign = campaigns.find((item) => item.id === activeCampaignId) ?? null;
-  const roster = campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
+  const roster = viewing ?? campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
+  const readOnly = viewing !== null;
   const members = roster.members;
   const selectedMember = members.find((item) => item.id === activeMemberId);
   const heroes = members.filter((member) => member.role === "Hero").length;
@@ -649,6 +665,31 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
+  async function redeemShare(code: string) {
+    try {
+      const shared = await apiRequest<Roster>("/shared-rosters/join", "POST", { code });
+      setOtherRosters((current) => current.some((item) => item.id === shared.id) ? current : [...current, shared]);
+      if (shared.campaignId) setActiveCampaignId(shared.campaignId);
+      setActiveRosterId(shared.id);
+      setActiveMemberId(null);
+      setError("");
+      return true;
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not add shared warband.");
+      return false;
+    }
+  }
+
+  async function toggleShare() {
+    try {
+      const updated = await apiRequest<Roster>(`/rosters/${roster.id}/share`, roster.shareCode ? "DELETE" : "POST");
+      setRosters((current) => current.map((item) => item.id === roster.id ? { ...item, shareCode: updated.shareCode } : item));
+      setError("");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not update sharing.");
+    }
+  }
+
   async function createRoster(warbandId: string) {
     setCreatingRoster(true);
     try {
@@ -767,6 +808,8 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     <div className="roster-app">
       <RosterSidebar
         rosters={campaignRosters}
+        otherRosters={otherRosters.filter((item) => item.campaignId === activeCampaignId || !item.campaignId || !campaigns.some((c) => c.id === item.campaignId))}
+        onRedeemShare={redeemShare}
         campaigns={campaigns}
         activeCampaignId={activeCampaignId}
         onSelectCampaign={selectCampaign}
@@ -786,6 +829,14 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
 
         <div className="page-content">
           {error && <div className="api-error" role="alert">{error}<button type="button" onClick={() => window.location.reload()}>Retry connection</button></div>}
+          {readOnly && <div className="readonly-banner">Viewing {roster.player ?? "another player"}'s warband · read-only</div>}
+          {!readOnly && roster.id && (
+            <div className="share-bar">
+              <button type="button" className="outline-button" onClick={() => void toggleShare()}>{roster.shareCode ? "Stop sharing" : "Share warband"}</button>
+              {roster.shareCode && <span>Share code: <code>{roster.shareCode}</code></span>}
+            </div>
+          )}
+          <fieldset className="readonly-fieldset" disabled={readOnly}>
           <RosterHeading
             rosterId={roster.id}
             name={roster.name}
@@ -917,6 +968,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
               </div>
             )}
           </section>
+          </fieldset>
           <footer className="page-footer"><span>MORDHEIM ROSTER LEDGER</span><span>KEEP YOUR WITS. KEEP YOUR RECORDS.</span></footer>
         </div>
         <NewRosterDialog
