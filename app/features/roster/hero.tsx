@@ -957,7 +957,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             <BattlePanel campaignId={roster.campaignId} rosters={campaignRosters} request={apiRequest} onRostersChanged={refreshRosters} onError={setError} />
           )}
           <section className="roster-overview" aria-label="Warband overview">
-            <RosterFields roster={roster} onUpdate={updateRoster} />
+            <RosterFields roster={roster} onUpdate={updateRoster} readOnly={readOnly} />
             {capacity && <CapacityPanel capacity={capacity} onToggleModifier={setCapacityModifier} />}
             <RosterSummary roster={roster} heroes={heroes} henchmen={henchmen} hiredSwords={hiredSwords} />
           </section>

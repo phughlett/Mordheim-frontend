@@ -97,6 +97,10 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .meta-field input:focus { outline: 0; }
 .meta-field input:disabled { cursor: not-allowed; opacity: .55; }
 .meta-field input::placeholder { color: #9ca49d; font-family: "IBM Plex Sans", sans-serif; font-size: 11px; }
+.overview-treasury input:enabled, .overview-wyrdstone input:enabled { min-height: 36px; padding: 6px 8px; border: 1px solid #8d9a90; border-radius: 4px; background: #fff; cursor: text; }
+.overview-treasury input:enabled:hover, .overview-wyrdstone input:enabled:hover { border-color: var(--forest); }
+.overview-treasury input:enabled:focus, .overview-wyrdstone input:enabled:focus { border-color: var(--forest); outline: 2px solid var(--forest); outline-offset: 2px; }
+.currency-edit-hint { grid-column: 1 / -1; margin: 0; color: #39443d; font-size: 10px; line-height: 1.5; }
 .overview-capacity { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .capacity-summary { min-width: 0; display: grid; gap: 5px; }
 .capacity-label { color: #77817a; font-size: 8px; font-weight: 600; letter-spacing: 1px; }
