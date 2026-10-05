@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { EquipmentStats, Member, WarriorEquipmentData } from "../types";
+import { MutationInventoryPanel } from "./mutation-inventory-panel";
 
 function EquipmentStatsSummary({ stats }: { stats: EquipmentStats | null }) {
   if (!stats || (!stats.weapon && !stats.armour && !stats.materialModifier && !stats.poison)) return null;
@@ -47,9 +48,10 @@ interface EquipmentInventoryPanelProps {
   error: string;
   onPurchase: (equipmentOptionId: string, modelIndex: number, quantity: number) => Promise<void>;
   onSell: (inventoryItemIds: string[]) => Promise<void>;
+  onSetMutations: (mutationIds: string[]) => Promise<boolean>;
 }
 
-export function EquipmentInventoryPanel({ member, treasury, data, loading, error, onPurchase, onSell }: EquipmentInventoryPanelProps) {
+export function EquipmentInventoryPanel({ member, treasury, data, loading, error, onPurchase, onSell, onSetMutations }: EquipmentInventoryPanelProps) {
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [modelIndex, setModelIndex] = useState(-1);
   const [quantity, setQuantity] = useState(1);
@@ -202,6 +204,12 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           );
         }) : <p className="equipment-state">No items purchased.</p>}
       </div>
+      {!loading && data?.mutations.eligible && <MutationInventoryPanel
+        key={`${member.id}-${data.mutations.entries.map((entry) => entry.id).join(",")}`}
+        data={data.mutations}
+        treasury={treasury}
+        onSave={onSetMutations}
+      />}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { EquipmentInventoryPanel } from "./equipment-inventory-panel";
 import { SkillsPanel } from "./skills-panel";
 import { SpellPanel } from "./spell-panel";
 import { LadsGotTalentPanel } from "./lads-got-talent-panel";
+import type { PurchaseAdvanceInput } from "../types";
 
 interface MemberDetailsPanelProps {
   member: Member;
@@ -38,9 +39,11 @@ interface MemberDetailsPanelProps {
   onSelectWarriorType: (memberId: string, typeId: string) => void;
   onPurchaseEquipment: (memberId: string, equipmentOptionId: string, modelIndex: number, quantity: number) => Promise<void>;
   onSellEquipment: (memberId: string, inventoryItemIds: string[]) => Promise<void>;
+  onSetMutations: (memberId: string, mutationIds: string[]) => Promise<boolean>;
   onLearnSkill: (memberId: string, skillId: string, advanceId: string) => Promise<void>;
   onForgetSkill: (memberId: string, warriorSkillId: string) => Promise<void>;
   onRecordAdvance: (input: RecordAdvanceInput) => Promise<boolean>;
+  onPurchaseAdvance: (input: PurchaseAdvanceInput) => Promise<boolean>;
   onRemoveAdvance: (advanceId: string) => Promise<boolean>;
   onLearnSpell: (input: LearnSpellInput) => Promise<boolean>;
   onRollSpells: (disciplineId: string, count: 1 | 2) => Promise<SpellRollResponse | null>;
@@ -85,9 +88,11 @@ export function MemberDetailsPanel({
   onSelectWarriorType,
   onPurchaseEquipment,
   onSellEquipment,
+  onSetMutations,
   onLearnSkill,
   onForgetSkill,
   onRecordAdvance,
+  onPurchaseAdvance,
   onRemoveAdvance,
   onLearnSpell,
   onRollSpells,
@@ -165,6 +170,8 @@ export function MemberDetailsPanel({
         </div>
       </div>
       <AdvancementPanel
+        onPurchaseAdvance={onPurchaseAdvance}
+        treasury={rosterTreasury}
         leading={
       <ExperienceTracker
         freebuild={freebuild}
@@ -217,6 +224,7 @@ export function MemberDetailsPanel({
         error={equipmentError}
         onPurchase={(optionId, modelIndex, quantity) => onPurchaseEquipment(member.id, optionId, modelIndex, quantity)}
         onSell={(inventoryItemIds) => onSellEquipment(member.id, inventoryItemIds)}
+        onSetMutations={(mutationIds) => onSetMutations(member.id, mutationIds)}
       />
       <SkillsPanel
         key={`skills-${member.id}`}

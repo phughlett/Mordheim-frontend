@@ -124,6 +124,15 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .henchman-add select { max-width: 190px; min-height: 34px; padding: 0 7px; border: 1px solid #cbd1c9; border-radius: 3px; color: #3c4c43; background: transparent; font-size: 10px; }
 .henchman-add input { width: 48px; min-height: 34px; padding: 0 4px; border: 1px solid #cbd1c9; border-radius: 3px; color: #3c4c43; background: transparent; font-size: 10px; text-align: center; }
 .hero-add { display: flex; align-items: center; gap: 5px; }
+.mutation-selection { display: grid; gap: 10px; }
+.mutation-inventory { display: grid; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #cbd1c9; }
+.mutation-hire-dialog { max-height: 85vh; overflow-y: auto; }
+.new-campaign-dialog { width: min(650px, 95vw); max-height: 85vh; overflow-y: auto; color: #39443d; }
+.purchase-toggle { display: flex; align-items: center; gap: 8px; margin: 14px 0; font-size: 12px; }
+.purchase-rules-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 6px; margin: 12px 0; font-size: 11px; }
+.purchase-rule-row { display: contents; }
+.purchase-rule-row input { min-width: 0; width: 100%; padding: 5px; border: 1px solid #cbd1c9; }
+.advance-purchases { padding: 12px; margin: 12px 0; border: 1px solid #cbd1c9; border-radius: 3px; }
 .hero-add select { max-width: 190px; min-height: 34px; padding: 0 7px; border: 1px solid #cbd1c9; border-radius: 3px; color: #3c4c43; background: transparent; font-size: 10px; }
 .hired-sword-add { display: flex; align-items: center; gap: 5px; }
 .hired-sword-add select { max-width: 160px; min-height: 34px; padding: 0 7px; border: 1px solid #cbd1c9; border-radius: 3px; color: #3c4c43; background: transparent; font-size: 10px; }

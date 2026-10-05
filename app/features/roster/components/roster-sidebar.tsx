@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
-import type { CampaignOption, Roster } from "../types";
+import { useState } from "react";
+import type { AdvancePurchaseRules, CampaignOption, Roster } from "../types";
+import { NewCampaignDialog } from "./new-campaign-dialog";
 
 interface RosterSidebarProps {
   rosters: Roster[];
@@ -13,10 +14,11 @@ interface RosterSidebarProps {
   campaigns: CampaignOption[];
   activeCampaignId: string;
   onSelectCampaign: (campaignId: string) => void;
-  onCreateCampaign: (name: string, maxGc: number) => Promise<boolean>;
+  onCreateCampaign: (name: string, maxGc: number, rules: AdvancePurchaseRules) => Promise<boolean>;
   onJoinCampaign: (code: string) => Promise<boolean>;
   username: string;
   onLogout: () => void;
+  campaignError: string;
 }
 
 function rosterModelCount(roster: Roster) {
@@ -39,27 +41,13 @@ export function RosterSidebar({
   onJoinCampaign,
   username,
   onLogout,
+  campaignError,
 }: RosterSidebarProps) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
-  const [maxGc, setMaxGc] = useState("500");
   const [joinCode, setJoinCode] = useState("");
   const [shareCode, setShareCode] = useState("");
   const activeCampaign = campaigns.find((item) => item.id === activeCampaignId);
-  const amount = Number(maxGc);
-  const formValid = name.trim() !== "" && maxGc !== "" && Number.isSafeInteger(amount) && amount >= 0;
-
-  async function submitCampaign(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!formValid) return;
-    if (await onCreateCampaign(name.trim(), amount)) {
-      setName("");
-      setMaxGc("500");
-      setCreating(false);
-      setOpen(false);
-    }
-  }
 
   return (
     <aside className="sidebar">
@@ -83,18 +71,7 @@ export function RosterSidebar({
               <strong>{item.name}</strong><small>{item.id === "freebuild" ? "no limit" : `${item.maxGc} GC`}</small>
             </button>
           ))}
-          {creating ? (
-            <form className="campaign-form" onSubmit={submitCampaign}>
-              <input autoFocus aria-label="Campaign name" placeholder="Campaign name" value={name} onChange={(event) => setName(event.target.value)} />
-              <label>Max GC <input aria-label="Maximum GC" type="number" min={0} step={1} value={maxGc} onChange={(event) => setMaxGc(event.target.value)} /></label>
-              <div>
-                <button type="submit" disabled={!formValid}>Create</button>
-                <button type="button" onClick={() => setCreating(false)}>Cancel</button>
-              </div>
-            </form>
-          ) : (
-            <button className="campaign-menu-item campaign-menu-new" type="button" onClick={() => setCreating(true)}>+ New campaign</button>
-          )}
+          <button className="campaign-menu-item campaign-menu-new" type="button" onClick={() => setCreating(true)}>+ New campaign</button>
           <form className="campaign-form" onSubmit={async (event) => { event.preventDefault(); if (joinCode.trim() && await onJoinCampaign(joinCode.trim())) { setJoinCode(""); setOpen(false); } }}>
             <input aria-label="Invite code" placeholder="Invite code" value={joinCode} onChange={(event) => setJoinCode(event.target.value)} />
             <div><button type="submit" disabled={!joinCode.trim()}>Join campaign</button></div>
@@ -138,6 +115,11 @@ export function RosterSidebar({
       <button className="new-roster-link" disabled={!canCreateRoster} onClick={onCreateRoster} type="button"><span>+</span> New warband</button>
       <div className="sidebar-footer sidebar-user"><span>{username}</span><button type="button" onClick={onLogout}>Log out</button></div>
       <div className="sidebar-footer"><span className="status-dot" /> Postgres <span className="save-status">{saved ? "Saved" : "Saving"}</span></div>
+      {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules) => {
+        const created = await onCreateCampaign(name, maxGc, rules);
+        if (created) setOpen(false);
+        return created;
+      }} />}
     </aside>
   );
 }

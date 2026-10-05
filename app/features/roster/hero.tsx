@@ -4,8 +4,9 @@ import { CapacityPanel } from "./components/capacity-panel";
 import { AdvancementPanel } from "./components/advancement-panel";
 import { MemberDetailsPanel } from "./components/member-details-panel";
 import { MemberTable } from "./components/member-table";
-import type { CampaignOption } from "./types";
+import type { AdvancePurchaseRules, CampaignOption, PurchaseAdvanceInput } from "./types";
 import { NewRosterDialog } from "./components/new-roster-dialog";
+import { MutationHireDialog } from "./components/mutation-hire-dialog";
 import { RosterFields } from "./components/roster-fields";
 import { CampaignBar } from "./components/campaign-bar";
 import { apiBaseUrl, getToken, type AuthUser } from "../auth/auth";
@@ -75,6 +76,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const [ladsGotTalentLoading, setLadsGotTalentLoading] = useState(false);
   const [ladsGotTalentError, setLadsGotTalentError] = useState("");
   const [newHeroTypeId, setNewHeroTypeId] = useState("");
+  const [mutationHireTypeId, setMutationHireTypeId] = useState<string | null>(null);
   const [newHenchmanTypeId, setNewHenchmanTypeId] = useState("");
   const [newHenchmanGroupSize, setNewHenchmanGroupSize] = useState(1);
   const [newHiredSwordTypeId, setNewHiredSwordTypeId] = useState("");
@@ -169,6 +171,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const pricedHeroTypes = warriorTypes.filter((type) => type.category === "Hero" && type.hireCost !== null);
   const pricedHenchmanTypes = warriorTypes.filter((type) => type.category === "Henchman" && type.hireCost !== null);
   const selectedHeroType = pricedHeroTypes.find((type) => type.id === newHeroTypeId);
+  const mutationHireType = pricedHeroTypes.find((type) => type.id === mutationHireTypeId);
   const selectedHenchmanType = pricedHenchmanTypes.find((type) => type.id === newHenchmanTypeId);
   const selectedHenchmanCount = selectedHenchmanType
     ? members.filter((member) => member.warriorTypeId === selectedHenchmanType.id).reduce((total, member) => total + member.groupSize, 0)
@@ -395,8 +398,18 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
-  async function addMember(role: MemberRole, warriorTypeId?: string, groupSize = 1, equipmentChoiceId?: string) {
-    if (!roster.id) return;
+  function beginHeroRecruitment() {
+    if (!selectedHeroType) return;
+    if (selectedHeroType.mutationOptions.length) {
+      setError("");
+      setMutationHireTypeId(selectedHeroType.id);
+    } else {
+      void addMember("Hero", selectedHeroType.id);
+    }
+  }
+
+  async function addMember(role: MemberRole, warriorTypeId?: string, groupSize = 1, equipmentChoiceId?: string, mutationIds?: string[]) {
+    if (!roster.id) return false;
     try {
       setSaved(false);
       const selectedType = warriorTypes.find((type) => type.id === warriorTypeId);
@@ -408,6 +421,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         ...(role === "Henchman" ? { groupSize } : {}),
         ...(warriorTypeId ? { warriorTypeId } : {}),
         ...(equipmentChoiceId ? { equipmentChoiceId } : {}),
+        ...(mutationIds ? { mutationIds } : {}),
       });
       const updatedRoster = await apiRequest<Roster>(`/rosters/${roster.id}`);
       setRosters((current) => current.map((item) => item.id === roster.id ? updatedRoster : item));
@@ -423,9 +437,27 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       }
       setSaved(true);
       setError("");
+      return true;
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not add warrior.");
       setSaved(false);
+      return false;
+    }
+  }
+
+  async function setMutations(memberId: string, mutationIds: string[]) {
+    setSaved(false);
+    try {
+      const updated = await apiRequest<WarriorEquipmentData & { treasury: string }>(`/members/${memberId}/mutations`, "PUT", { mutationIds });
+      setMemberEquipment(updated);
+      replaceRoster(await apiRequest<Roster>(`/rosters/${roster.id}`));
+      setEquipmentError("");
+      setSaved(true);
+      return true;
+    } catch (requestError) {
+      setEquipmentError(requestError instanceof Error ? requestError.message : "Could not save mutations.");
+      setSaved(false);
+      return false;
     }
   }
 
@@ -483,6 +515,8 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       const skills = await apiRequest<WarriorSkillsData>(`/members/${memberId}/skills/${warriorSkillId}`, "DELETE");
       setMemberSkills(skills);
+      setMemberAdvancements(await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances`));
+      replaceRoster(await apiRequest<Roster>(`/rosters/${roster.id}`));
     } catch (requestError) {
       setSkillsError(requestError instanceof Error ? requestError.message : "Could not forget this skill.");
     }
@@ -575,6 +609,20 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       return true;
     } catch (requestError) {
       setSpellsError(requestError instanceof Error ? requestError.message : "Could not use this Tome to learn Lesser Magic.");
+      return false;
+    }
+  }
+
+  async function purchaseAdvance(memberId: string, input: PurchaseAdvanceInput) {
+    setAdvancementsError("");
+    try {
+      setMemberAdvancements(await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advance-purchases`, "POST", input));
+      setMemberSkills(await apiRequest<WarriorSkillsData>(`/members/${memberId}/skills`));
+      replaceRoster(await apiRequest<Roster>(`/rosters/${roster.id}`));
+      setSaved(true);
+      return true;
+    } catch (requestError) {
+      setAdvancementsError(requestError instanceof Error ? requestError.message : "Could not purchase this advancement.");
       return false;
     }
   }
@@ -676,9 +724,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     setActiveMemberId(null);
   }
 
-  async function createCampaign(name: string, maxGc: number) {
+  async function createCampaign(name: string, maxGc: number, advancePurchaseRules: AdvancePurchaseRules) {
     try {
-      const created = await apiRequest<CampaignOption>("/campaigns", "POST", { name, maxGc });
+      const created = await apiRequest<CampaignOption>("/campaigns", "POST", { name, maxGc, advancePurchaseRules });
       setCampaigns((current) => [...current, created]);
       selectCampaign(created.id);
       setError("");
@@ -864,6 +912,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         activeCampaignId={activeCampaignId}
         onSelectCampaign={selectCampaign}
         onCreateCampaign={createCampaign}
+        campaignError={error}
         onJoinCampaign={joinCampaign}
         username={user.username}
         onLogout={onLogout}
@@ -932,8 +981,8 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                     <option value="">{pricedHeroTypes.length ? "Choose priced Hero" : "No verified Hero prices"}</option>
                     {pricedHeroTypes.map((type) => <option key={type.id} value={type.id}>{type.name} · {type.hireCost} GC</option>)}
                   </select>
-                  <button className="primary-button" disabled={!canHire || !roster.warbandId || loading || typesLoading || !selectedHeroType || Number(roster.treasury) < (selectedHeroType?.hireCost ?? 0) || atMemberLimit || atHeroLimit} onClick={() => selectedHeroType && addMember("Hero", newHeroTypeId)} type="button">
-                    <span>+</span> {selectedHeroType ? `Hire Hero · ${selectedHeroType.hireCost} GC` : "Hire Hero"}
+                  <button className="primary-button" disabled={!canHire || !roster.warbandId || loading || typesLoading || !selectedHeroType || Number(roster.treasury) < (selectedHeroType?.hireCost ?? 0) || atMemberLimit || atHeroLimit} onClick={beginHeroRecruitment} type="button">
+                    <span>+</span> {selectedHeroType ? `Hire Hero · ${selectedHeroType.hireCost} GC${selectedHeroType.mutationOptions.length ? " + mutations" : ""}` : "Hire Hero"}
                   </button>
                 </div>
                 <div className="hired-sword-add">
@@ -957,7 +1006,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             ) : !roster.warbandId ? (
               <div className="empty-state"><div className="empty-mark">*</div><h3>Choose your warband.</h3><p>Select a warband to load its verified warrior types.</p></div>
             ) : roster.members.length === 0 ? (
-              <div className="empty-state"><div className="empty-mark">*</div><h3>Your roster is waiting.</h3><p>Add a hero, henchman, or Hired Sword to begin recording this warband.</p><button className="primary-button" disabled={!canHire || !selectedHeroType || Number(roster.treasury) < (selectedHeroType?.hireCost ?? 0) || atHeroLimit || atMemberLimit} onClick={() => selectedHeroType && addMember("Hero", newHeroTypeId)} type="button"><span>+</span> Hire first hero</button></div>
+              <div className="empty-state"><div className="empty-mark">*</div><h3>Your roster is waiting.</h3><p>Add a hero, henchman, or Hired Sword to begin recording this warband.</p><button className="primary-button" disabled={!canHire || !selectedHeroType || Number(roster.treasury) < (selectedHeroType?.hireCost ?? 0) || atHeroLimit || atMemberLimit} onClick={beginHeroRecruitment} type="button"><span>+</span> Hire first hero</button></div>
             ) : (
               <div className="member-layout">
                 <MemberTable
@@ -980,6 +1029,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   allowedActions={roster.campaign?.allowedActions}
                   canAddGroupModel={!atMemberLimit && (!selectedWarriorType || !isWarriorTypeAtLimit(selectedWarriorType))}
                   onResizeGroup={resizeHenchmanGroup}
+                  onSetMutations={setMutations}
                   freebuild={!roster.campaignId}
                   member={selectedMember}
                   warriorTypes={warriorTypes}
@@ -1010,6 +1060,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   onLearnSkill={learnSkill}
                   onForgetSkill={forgetSkill}
                   onRecordAdvance={(input) => recordMemberAdvance(selectedMember.id, input)}
+                  onPurchaseAdvance={(input) => purchaseAdvance(selectedMember.id, input)}
                   onRemoveAdvance={(advanceId) => removeMemberAdvance(selectedMember.id, advanceId)}
                   onLearnSpell={(input) => learnSpell(selectedMember.id, input)}
                   onRollSpells={(disciplineId, count) => rollSpells(selectedMember.id, disciplineId, count)}
@@ -1038,6 +1089,19 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
           onCancel={() => setNewRosterDialogOpen(false)}
           onSubmit={createRoster}
         />
+        {mutationHireType && !readOnly && <MutationHireDialog
+          key={`${roster.id}-${mutationHireType.id}`}
+          type={mutationHireType}
+          treasury={roster.treasury}
+          freebuild={!roster.campaignId}
+          error={error}
+          onCancel={() => setMutationHireTypeId(null)}
+          onHire={async (mutationIds) => {
+            const hired = await addMember("Hero", mutationHireType.id, 1, undefined, mutationIds);
+            if (hired) setMutationHireTypeId(null);
+            return hired;
+          }}
+        />}
       </main>
     </div>
   );

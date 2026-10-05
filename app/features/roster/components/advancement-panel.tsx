@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import type { Member, RecordAdvanceInput, StatLabel, WarriorAdvancementsData } from "../types";
+import type { Member, PurchaseAdvanceInput, RecordAdvanceInput, StatLabel, WarriorAdvancementsData } from "../types";
+import { AdvancePurchasePanel } from "./advance-purchase-panel";
 
 interface AdvancementPanelProps {
   member: Member;
@@ -8,6 +9,8 @@ interface AdvancementPanelProps {
   error: string;
   onRecordAdvance: (input: RecordAdvanceInput) => Promise<boolean>;
   onRemoveAdvance: (advanceId: string) => Promise<boolean>;
+  onPurchaseAdvance: (input: PurchaseAdvanceInput) => Promise<boolean>;
+  treasury: string;
   leading?: ReactNode;
 }
 
@@ -35,7 +38,7 @@ function advanceDescription(advance: WarriorAdvancementsData["history"][number])
   return `+1 ${advance.stat ? statNames[advance.stat] : "characteristic"}`;
 }
 
-export function AdvancementPanel({ member, data, loading, error, onRecordAdvance, onRemoveAdvance, leading }: AdvancementPanelProps) {
+export function AdvancementPanel({ member, data, loading, error, onRecordAdvance, onRemoveAdvance, onPurchaseAdvance, treasury, leading }: AdvancementPanelProps) {
   const [result, setResult] = useState<"stat_increase" | "new_skill" | "lads_got_talent">("stat_increase");
   const [stat, setStat] = useState<StatLabel | "">("");
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +148,7 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
       {error && <p className="skills-error" role="alert">{error}</p>}
       </div>
       </div>
+      {!loading && data?.purchases && <AdvancePurchasePanel data={data.purchases} treasury={treasury} onPurchase={onPurchaseAdvance} />}
           {data?.canGainExperience && data.history.length > 0 && (
             <div className="advancement-history">
               <span className="skills-panel-label">RECORDED ADVANCES</span>
@@ -154,17 +158,18 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
                 <div className="advancement-history-item" key={advance.id}>
                   <span>{advance.experienceThreshold} XP · {advance.advanceTable}</span>
                   <strong>{advance.roll ? `2D6 ${advance.roll}${advance.secondaryRoll ? ` · D6 ${advance.secondaryRoll}` : ""} · ` : ""}{advanceDescription(advance)}</strong>
+                  {advance.purchaseCost !== null && <small>Purchased · {advance.purchaseCost} GC · XP {advance.experienceBeforePurchase} → {advance.experienceThreshold}</small>}
                   {advance.consumedAt && <small>Used for promotion</small>}
                   {advance.canRemove && (
                     <button
                       className="advancement-remove-button"
                       type="button"
-                      aria-label={`Remove advancement award earned at ${advance.experienceThreshold} XP`}
+                      aria-label={advance.purchaseCost !== null ? `Refund purchased advancement at ${advance.experienceThreshold} XP for ${advance.purchaseCost} GC` : `Remove advancement award earned at ${advance.experienceThreshold} XP`}
                       title="Undo this latest advance and reverse its recorded effect"
                       disabled={submitting || removingAdvanceId !== null}
                       onClick={() => void removeAdvance(advance.id)}
                     >
-                      {removingAdvanceId === advance.id ? "Removing..." : "Remove advancement award"}
+                      {removingAdvanceId === advance.id ? "Removing..." : advance.purchaseCost !== null ? `Refund purchase · ${advance.purchaseCost} GC` : "Remove advancement award"}
                     </button>
                   )}
                 </div>

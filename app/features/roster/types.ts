@@ -61,6 +61,25 @@ export interface WarriorTypeOption {
   sourceReference: string | null;
   ruleText: string | null;
   conditionText: string | null;
+  mutationRequired: boolean;
+  mutationOptions: MutationOption[];
+}
+
+export interface MutationOption {
+  id: string;
+  name: string;
+  unitCost: number;
+  effectText: string;
+  sourceReference: string;
+}
+
+export interface MutationInventory {
+  eligible: boolean;
+  required: boolean;
+  canEdit: boolean;
+  availableOptions: MutationOption[];
+  entries: (MutationOption & { mutationId: string; unitCostPaid: number })[];
+  totalCost: number;
 }
 
 export interface HiredSwordEquipmentChoice {
@@ -108,6 +127,25 @@ export interface WarriorAdvance {
   createdAt: string;
   consumedAt: string | null;
   canRemove: boolean;
+  purchaseCost: number | null;
+  experienceBeforePurchase: number | null;
+}
+
+export interface AdvancePurchaseRules {
+  enabled: boolean;
+  skillCost: number;
+  stats: Record<StatLabel, { firstCost: number; additionalCost: number; maxIncreases: number | null }>;
+}
+
+export interface AdvancePurchaseOptions {
+  enabled: boolean;
+  canPurchase: boolean;
+  pendingAdvances: boolean;
+  nextExperience: number | null;
+  stats: { stat: StatLabel; cost: number; purchasedCount: number; maxIncreases: number | null; racialMaximum: number | null; available: boolean }[];
+  skillCost: number;
+  skillAllowance: number;
+  availableSkills: SkillOption[];
 }
 
 export interface WarriorAdvancementsData {
@@ -131,6 +169,12 @@ export interface WarriorAdvancementsData {
   canPromote: boolean;
   pendingSkillAdvances: { id: string; experienceThreshold: number }[];
   history: WarriorAdvance[];
+  purchases: AdvancePurchaseOptions;
+}
+
+export interface PurchaseAdvanceInput {
+  stat?: StatLabel;
+  skillId?: string;
 }
 
 export interface RecordAdvanceInput {
@@ -219,6 +263,7 @@ export interface WarriorEquipmentData {
   groupSize: number;
   availableOptions: EquipmentOption[];
   inventory: WarriorInventoryItem[];
+  mutations: MutationInventory;
 }
 
 export type SkillCategory = "Combat" | "Shooting" | "Strength" | "Speed" | "Special" | "Academic";
@@ -247,6 +292,7 @@ export interface LearnedSkill extends SkillOption {
   acquiredAt: string;
   notes: string | null;
   isStarting: boolean;
+  purchaseCost: number | null;
 }
 
 export interface WarriorSkillsData {
@@ -396,6 +442,7 @@ export interface CampaignOption {
   warbandCount: number;
   inviteCode?: string;
   isOwner?: boolean;
+  advancePurchaseRules?: AdvancePurchaseRules;
 }
 
 export interface Roster {

@@ -122,6 +122,7 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
             <div className="skills-learned-item-main">
               <span>{skill.name}<small>{skill.isStarting ? "Starting · " : ""}{skill.category}{skill.specialListName ? ` · ${skill.specialListName}` : ""}</small></span>
               <p className="skills-learned-description">{skill.description}</p>
+              {skill.purchaseCost != null && <small>Purchased · {skill.purchaseCost} GC · forgetting refunds the latest purchase during roster creation.</small>}
             </div>
             <button className="skills-forget-button" type="button" disabled={forgettingId !== null || skill.isStarting} aria-label={skill.isStarting ? `${skill.name} is a starting ability` : `Forget ${skill.name}`} onClick={() => void forgetLearnedSkill(skill.warriorSkillId)}>
               {skill.isStarting ? "Starting" : forgettingId === skill.warriorSkillId ? "Forgetting..." : "Forget"}
