@@ -228,24 +228,7 @@ export function MemberTable({
                 />
               </td>
               <td>
-                {member.role === "Henchman" ? (
-                  <input
-                    className="table-input group-size-input"
-                    aria-label={`${member.name} group size`}
-                    type="number"
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={member.groupSize}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) => {
-                      const value = Number(event.target.value);
-                      if (Number.isInteger(value) && value >= 1 && value <= 5) {
-                        onUpdateMember(member.id, { groupSize: value });
-                      }
-                    }}
-                  />
-                ) : "1"}
+                <span aria-label={`${member.name} group size`}>{member.role === "Henchman" ? member.groupSize : 1}</span>
               </td>
               {statLabels.map((label) => (
                 <td key={label}>

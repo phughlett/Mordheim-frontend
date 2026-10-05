@@ -612,6 +612,21 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
+  async function resizeHenchmanGroup(memberId: string, groupSize: number) {
+    if (!roster.id) return;
+    setSaved(false);
+    try {
+      await apiRequest<Member>(`/members/${memberId}`, "PATCH", { groupSize });
+      const updated = await apiRequest<Roster>(`/rosters/${roster.id}`);
+      setRosters((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setError("");
+      if (rosterTimers.current.size === 0 && memberTimers.current.size === 0) setSaved(true);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not resize the Henchman group.");
+      setSaved(true);
+    }
+  }
+
   function updateMember(id: string, changes: Partial<Member>) {
     if (!roster.id) return;
     setSaved(false);
@@ -961,7 +976,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   isWarriorTypeAtLimit={isWarriorTypeAtLimit}
                   warriorTypeOptionLabel={warriorTypeOptionLabel}
                   activeDetails={selectedMember ? (
-<MemberDetailsPanel
+                  <MemberDetailsPanel
+                  allowedActions={roster.campaign?.allowedActions}
+                  canAddGroupModel={!atMemberLimit && (!selectedWarriorType || !isWarriorTypeAtLimit(selectedWarriorType))}
+                  onResizeGroup={resizeHenchmanGroup}
                   freebuild={!roster.campaignId}
                   member={selectedMember}
                   warriorTypes={warriorTypes}

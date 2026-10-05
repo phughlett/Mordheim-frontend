@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LadsGotTalentOptions, LearnSpellInput, Member, RecordAdvanceInput, RosterCapacity, SkillCategoryChoice, SpellRollResponse, WarriorAdvancementsData, WarriorEquipmentData, WarriorSkillsData, WarriorSpellsData, WarriorTypeOption } from "../types";
 import { ExperienceTracker } from "./experience/experience-tracker";
 import { AdvancementPanel } from "./advancement-panel";
@@ -9,6 +10,9 @@ import { LadsGotTalentPanel } from "./lads-got-talent-panel";
 interface MemberDetailsPanelProps {
   member: Member;
   freebuild?: boolean;
+  allowedActions?: string[];
+  canAddGroupModel: boolean;
+  onResizeGroup: (memberId: string, groupSize: number) => Promise<void>;
   warriorTypes: WarriorTypeOption[];
   selectedWarriorType: WarriorTypeOption | undefined;
   equipmentData: WarriorEquipmentData | null;
@@ -53,6 +57,9 @@ interface MemberDetailsPanelProps {
 export function MemberDetailsPanel({
   member,
   freebuild = false,
+  allowedActions,
+  canAddGroupModel,
+  onResizeGroup,
   warriorTypes,
   selectedWarriorType,
   equipmentData,
@@ -93,6 +100,16 @@ export function MemberDetailsPanel({
   onPromote,
   isPromotedHenchman,
 }: MemberDetailsPanelProps) {
+  const [resizingGroup, setResizingGroup] = useState(false);
+  const hireCost = selectedWarriorType?.hireCost;
+  async function resizeGroup(groupSize: number) {
+    setResizingGroup(true);
+    try {
+      await onResizeGroup(member.id, groupSize);
+    } finally {
+      setResizingGroup(false);
+    }
+  }
   const memberTypes = warriorTypes.filter((type) => type.category === member.role);
 
   const isFixedType = isPromotedHenchman(member) || member.role === "Hero" || Boolean(member.warriorTypeId);
@@ -112,20 +129,29 @@ export function MemberDetailsPanel({
           <input value={member.name} onChange={(event) => onUpdateMember(member.id, { name: event.target.value })} />
         </label>
         {member.role === "Henchman" && (
-      <label className="detail-field">
-        <span>GROUP SIZE</span>
-        <input
-          type="number"
-          min={1}
-          max={5}
-          step={1}
-          value={member.groupSize}
-          onChange={(event) => {
-            const value = Number(event.target.value);
-            if (Number.isInteger(value) && value >= 1 && value <= 5) onUpdateMember(member.id, { groupSize: value });
-          }}
-        />
-      </label>
+          <div className="detail-field">
+            <span>GROUP SIZE</span>
+            <strong>{member.groupSize} / 5 models</strong>
+            <div className="section-actions">
+              <button
+                type="button"
+                className="outline-button"
+                disabled={resizingGroup || member.groupSize >= 5 || !canAddGroupModel || hireCost == null || Number(rosterTreasury) < hireCost || (allowedActions !== undefined && !allowedActions.includes("hire"))}
+                onClick={() => void resizeGroup(member.groupSize + 1)}
+              >
+                Hire one{hireCost != null ? ` · ${hireCost} GC` : ""}
+              </button>
+              <button
+                type="button"
+                className="outline-button"
+                disabled={resizingGroup || member.groupSize <= 1 || (allowedActions !== undefined && !allowedActions.includes("remove"))}
+                onClick={() => void resizeGroup(member.groupSize - 1)}
+              >
+                Remove one · refund {hireCost ?? 0} GC
+              </button>
+            </div>
+            <small>Adding models costs their hire fee. Removing models refunds that fee; their individual equipment is removed. Use Remove in the roster to remove the entire group.</small>
+          </div>
         )}
         </div>
         <div className="details-info">
