@@ -13,6 +13,7 @@ import { apiBaseUrl, getToken, type AuthUser } from "../auth/auth";
 import { BattlePanel } from "./components/battle-panel";
 import { RosterHeading } from "./components/roster-heading";
 import { RosterSidebar } from "./components/roster-sidebar";
+import { RosterPrintExport } from "./components/roster-print-export";
 import { RosterSummary } from "./components/roster-summary";
 import { RosterTopbar } from "./components/roster-topbar";
 import { SpellPanel } from "./components/spell-panel";
@@ -929,10 +930,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         <div className="page-content">
           {error && <div className="api-error" role="alert">{error}<button type="button" onClick={() => window.location.reload()}>Retry connection</button></div>}
           {readOnly && <div className="readonly-banner">Viewing {roster.player ?? "another player"}'s warband · read-only</div>}
-          {!readOnly && roster.id && (
+          {roster.id && (
             <div className="share-bar">
-              <button type="button" className="outline-button" onClick={() => void toggleShare()}>{roster.shareCode ? "Stop sharing" : "Share warband"}</button>
-              {roster.shareCode && <>
+              <RosterPrintExport roster={roster} request={apiRequest} onError={setError} />
+              {!readOnly && <button type="button" className="outline-button" onClick={() => void toggleShare()}>{roster.shareCode ? "Stop sharing" : "Share warband"}</button>}
+              {!readOnly && roster.shareCode && <>
                 <a href={shareLink}>{shareLink}</a>
                 <button type="button" className="outline-button" onClick={() => void copyShareLink()}>{copiedShareLink === shareLink ? "Link copied" : "Copy link"}</button>
                 <span>Share code: <code>{roster.shareCode}</code></span>
