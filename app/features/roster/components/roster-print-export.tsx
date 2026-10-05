@@ -141,7 +141,8 @@ function RosterPrintSheet({ data }: { data: PrintData }) {
         </div>
         <dl className="print-totals">
           <div><dt>Campaign</dt><dd>{roster.campaignName ?? "Freebuild"}</dd></div>
-          <div><dt>Treasury</dt><dd>{roster.treasury} GC</dd></div>
+          <div><dt>Gold Crowns</dt><dd>{roster.treasury} GC</dd></div>
+          <div><dt>Wyrdstone</dt><dd>{roster.wyrdstone}</dd></div>
           <div><dt>Rating</dt><dd>{roster.rating}</dd></div>
           {capacity && <div><dt>Models</dt><dd>{capacity.currentMembers}/{capacity.maxMembers}</dd></div>}
           {roster.campaign && <div><dt>Battles</dt><dd>{roster.campaign.battlesFought}</dd></div>}

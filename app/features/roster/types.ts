@@ -458,6 +458,7 @@ export interface Roster {
   warband: string;
   warbandId: string | null;
   treasury: string;
+  wyrdstone: string;
   rating: string;
   members: Member[];
   capacity: RosterCapacity | null;

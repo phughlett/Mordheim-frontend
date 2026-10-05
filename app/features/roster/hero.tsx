@@ -24,6 +24,7 @@ const emptyRoster: Roster = {
   warband: "",
   warbandId: null,
   treasury: "0",
+  wyrdstone: "0",
   rating: "0",
   members: [],
   capacity: null,

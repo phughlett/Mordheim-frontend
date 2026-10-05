@@ -13,8 +13,12 @@ export function RosterFields({ roster, onUpdate }: RosterFieldsProps) {
         <strong>{roster.warband || "No warband selected"}</strong>
       </div>
       <label className="meta-field overview-treasury">
-        <span>{roster.campaign?.phase === "setup" ? "MAXIMUM GC" : "TREASURY"} <small>GC</small></span>
-        <input disabled={!roster.id || (roster.campaign !== undefined && !roster.campaign.allowedActions.includes("treasury"))} inputMode="numeric" value={roster.treasury} onChange={(event) => onUpdate({ treasury: event.target.value.replace(/[^0-9]/g, "") })} />
+        <span>Gold Crowns</span>
+        <input disabled={!roster.id || Boolean(roster.campaignId)} inputMode="numeric" value={roster.treasury} onChange={(event) => onUpdate({ treasury: event.target.value.replace(/[^0-9]/g, "") })} />
+      </label>
+      <label className="meta-field overview-wyrdstone">
+        <span>Wyrdstone</span>
+        <input disabled={!roster.id || Boolean(roster.campaignId)} inputMode="numeric" value={roster.wyrdstone} onChange={(event) => onUpdate({ wyrdstone: event.target.value.replace(/[^0-9]/g, "") })} />
       </label>
     </div>
   );

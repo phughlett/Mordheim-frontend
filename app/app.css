@@ -86,8 +86,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 button:disabled { cursor: not-allowed; opacity: .5; }
 
 .roster-overview { margin-top: 25px; padding: 12px 14px; display: grid; grid-template-columns: minmax(190px, .9fr) minmax(220px, 1.2fr) minmax(360px, 2fr); align-items: center; gap: 14px; border-top: 1px solid #cdd2cb; border-bottom: 1px solid #cdd2cb; background: rgba(247,247,242,.65); }
-.roster-meta { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(95px, .7fr); align-items: center; gap: 8px; }
-.overview-warband { min-width: 0; display: grid; gap: 6px; }
+.roster-meta { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; }
+.overview-warband { min-width: 0; display: grid; gap: 6px; grid-column: 1 / -1; }
 .overview-warband > span, .meta-field > span { color: #77817a; font-size: 8px; font-weight: 600; letter-spacing: 1px; }
 .overview-warband > strong { overflow-wrap: anywhere; color: #303a34; font-family: "Barlow Condensed", sans-serif; font-size: 16px; font-weight: 500; }
 .meta-field { min-width: 0; padding-left: 10px; display: flex; flex-direction: column; justify-content: center; gap: 6px; border-left: 1px solid #d6dbd4; }
@@ -348,7 +348,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .page-heading-actions .outline-button, .delete-roster-button { min-height: 32px; padding: 0 8px; font-size: 10px; }
   .heading-note { max-width: 250px; font-size: 10px; }
   .roster-overview { margin-top: 20px; padding: 11px 10px; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .roster-meta { grid-template-columns: minmax(0, 1fr) minmax(95px, .6fr); }
+  .roster-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overview-capacity { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .summary-strip { grid-column: auto; }
   .summary-item { padding: 0 6px; }
