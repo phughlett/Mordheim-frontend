@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AdvancePurchaseRules, CampaignOption, Roster } from "../types";
 import { NewCampaignDialog } from "./new-campaign-dialog";
+import { CorrectionLauncher } from "../../corrections/correction-launcher";
 
 interface RosterSidebarProps {
   rosters: Roster[];
@@ -113,6 +114,7 @@ export function RosterSidebar({
         <button type="submit" disabled={!shareCode.trim()}>Add</button>
       </form>
       <button className="new-roster-link" disabled={!canCreateRoster} onClick={onCreateRoster} type="button"><span>+</span> New warband</button>
+      <CorrectionLauncher />
       <div className="sidebar-footer sidebar-user"><span>{username}</span><button type="button" onClick={onLogout}>Log out</button></div>
       <div className="sidebar-footer"><span className="status-dot" /> Postgres <span className="save-status">{saved ? "Saved" : "Saving"}</span></div>
       {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules) => {

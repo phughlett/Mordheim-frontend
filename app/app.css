@@ -479,3 +479,12 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .share-join { margin: 8px 0; display: flex; gap: 6px; }
 .share-join input { min-width: 0; flex: 1; font-size: 11px; }
 .share-join button { font-size: 11px; }
+
+.correction-dialog { max-height: 90vh; overflow-y: auto; color: var(--ink); }
+.correction-dialog p { font-size: 12px; line-height: 1.5; }
+.correction-dialog textarea { width: 100%; resize: vertical; padding: 8px; }
+.correction-notice { padding: 8px; background: #f6efd9; color: #5b4a1c; border: 1px solid #c9b27a; }
+.correction-launcher { margin: 12px 0; }
+.sidebar .correction-launcher, .auth-screen > .correction-launcher { color: #d1aa62; border-color: #526259; }
+.auth-screen > .correction-launcher { align-self: start; }
+.correction-trap { display: none; }

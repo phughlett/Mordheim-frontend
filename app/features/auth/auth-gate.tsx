@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { apiBaseUrl, getToken, setToken, type AuthUser } from "./auth";
+import { CorrectionLauncher } from "../corrections/correction-launcher";
 
 export function AuthGate({ children }: { children: (user: AuthUser, logout: () => void) => ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -70,6 +71,7 @@ export function AuthGate({ children }: { children: (user: AuthUser, logout: () =
           {mode === "login" ? "Need an account? Register" : "Have an account? Sign in"}
         </button>
       </form>
+      <CorrectionLauncher />
     </div>
   );
 }
