@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { statLabels, type EquipmentSpecialRule, type EquipmentStats, type InventoryEntry, type Member, type Roster, type TradingData, type WarriorEquipmentData, type WarriorSkillsData, type WarriorSpellsData } from "../types";
 import type { WarriorAdvancementsData } from "../types";
 import { PrintExperienceTrack } from "./experience/print-experience-track";
+import { fieldingSummary } from "../fielding-summary";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -141,6 +142,7 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
   const stash = data.stash ?? [];
   const references = collectReferences(sheets);
   const capacity = roster.capacity;
+  const { totalFielded, routThreshold } = fieldingSummary(sheets.map((sheet) => sheet.member));
   return (
     <div className="print-sheet">
       <header className="print-header">
@@ -154,6 +156,8 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
           <div><dt>Gold Crowns</dt><dd>{roster.treasury} GC</dd></div>
           <div><dt>Wyrdstone</dt><dd>{roster.wyrdstone}</dd></div>
           <div><dt>Rating</dt><dd>{roster.rating}</dd></div>
+          <div><dt>Total Fielded</dt><dd>{totalFielded} warriors</dd></div>
+          <div><dt>Rout Test At</dt><dd>{totalFielded === 0 ? "—" : routThreshold} out of action (25%)</dd></div>
           {capacity && <div><dt>Models</dt><dd>{capacity.currentMembers}/{capacity.maxMembers}</dd></div>}
           {roster.campaign && <div><dt>Battles</dt><dd>{roster.campaign.battlesFought}</dd></div>}
           <div><dt>Printed</dt><dd>{data.printedAt}</dd></div>

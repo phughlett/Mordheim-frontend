@@ -36,6 +36,7 @@ const { SkillsPanel } = require("../app/features/roster/components/skills-panel.
 const { RosterFields, WarbandCurrency } = require("../app/features/roster/components/roster-fields.tsx");
 const { RosterHeading } = require("../app/features/roster/components/roster-heading.tsx");
 const { MemberTable } = require("../app/features/roster/components/member-table.tsx");
+const { RosterSummary } = require("../app/features/roster/components/roster-summary.tsx");
 if (previousAuth) require.cache[authPath] = previousAuth;
 else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
@@ -187,6 +188,33 @@ test("a printed roster with only one warrior still includes the full experience 
   assert.match(html, /Warband stash/);
   assert.match(html, /Tome of Magic ×1/);
   assert.match(html, /A wizard&#x27;s tome\./);
+  assert.match(html, /<dt>Total Fielded<\/dt><dd>1 warriors<\/dd>/);
+  assert.match(html, /<dt>Rout Test At<\/dt><dd>1 out of action \(25%\)<\/dd>/);
+});
+
+test("PDF fielding counts include every Henchman model and Hired Sword, independently of capacity", () => {
+  for (const [members, total, threshold] of [
+    [[], 0, "—"],
+    [[{ role: "Hero", groupSize: 1 }, { role: "Henchman", groupSize: 5 }, { role: "Hired Sword", groupSize: 1 }], 7, "2"],
+    [[{ role: "Henchman", groupSize: 4 }], 4, "1"],
+    [[{ role: "Henchman", groupSize: 5 }], 5, "2"],
+  ]) {
+    const html = render(RosterPrintSheet, { data: {
+      roster: { name: "Fielding Test", treasury: "0", wyrdstone: "0", rating: 0, capacity: { currentMembers: 99, maxMembers: 100 } },
+      sheets: members.map((member, index) => ({ member: { ...member, id: String(index), name: "Warrior", stats: {}, experience: "0" }, equipment: null, skills: null, spells: null, advancements: { canGainExperience: false } })),
+      stash: [], printedAt: "2026-10-05",
+    } });
+    assert.match(html, new RegExp(`<dt>Total Fielded</dt><dd>${total} warriors</dd>`));
+    assert.match(html, new RegExp(`<dt>Rout Test At</dt><dd>${threshold} out of action \\(25%\\)</dd>`));
+    const summary = render(RosterSummary, {
+      roster: { members, rating: 0 },
+      heroes: members.filter((member) => member.role === "Hero").length,
+      henchmen: members.filter((member) => member.role === "Henchman").reduce((total, member) => total + member.groupSize, 0),
+      hiredSwords: members.filter((member) => member.role === "Hired Sword").length,
+    });
+    assert.match(summary, new RegExp(`TOTAL FIELDED</span><strong>${total} `));
+    assert.match(summary, new RegExp(`ROUT TEST AT</span><strong>${threshold} `));
+  }
 });
 
 test("printed equipment keeps shop and legacy items with the same name separate", () => {

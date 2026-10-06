@@ -1,4 +1,5 @@
 import type { Roster } from "../types";
+import { fieldingSummary } from "../fielding-summary";
 
 interface RosterSummaryProps {
   roster: Roster;
@@ -8,8 +9,7 @@ interface RosterSummaryProps {
 }
 
 export function RosterSummary({ roster, heroes, henchmen, hiredSwords }: RosterSummaryProps) {
-  const warriors = heroes + henchmen + hiredSwords;
-  const routThreshold = Math.ceil(warriors / 4);
+  const { totalFielded: warriors, routThreshold } = fieldingSummary(roster.members);
 
   return (
     <div className="summary-strip" role="group" aria-label="Warband roster counts and rating">
