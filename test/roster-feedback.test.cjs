@@ -28,7 +28,7 @@ const { PrintExperienceTrack } = require("../app/features/roster/components/expe
 const { equipmentStacks, RosterPrintSheet } = require("../app/features/roster/components/roster-print-export.tsx");
 const { isCustomShopItemValid, NewCampaignDialog } = require("../app/features/roster/components/new-campaign-dialog.tsx");
 const { AdvancePurchasePanel } = require("../app/features/roster/components/advance-purchase-panel.tsx");
-const { StashItem, WarbandTradingPanel, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
+const { AssignedEquipment, StashItem, WarbandTradingPanel, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
 const { SpellPanel } = require("../app/features/roster/components/spell-panel.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
@@ -41,6 +41,31 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+
+test("assigned equipment totals items and lists each carrier once without model numbers", () => {
+  const entries = [
+    { id: "hero", name: "Dagger", category: "weapon", quantity: 2, memberId: "captain", modelIndex: 0, shopItemId: "dagger" },
+    ...Array.from({ length: 5 }, (_, modelIndex) => ({
+      id: `group-${modelIndex}`, name: "Dagger", category: "weapon", quantity: 1,
+      memberId: "swordsmen", modelIndex, equipmentOptionId: "starter-dagger",
+    })),
+    { id: "shield", name: "Shield", category: "shield", quantity: 1, memberId: "captain", modelIndex: 0 },
+    { id: "custom", name: "Dagger", category: "misc", quantity: 1, memberId: "captain", modelIndex: 0 },
+  ];
+  const original = JSON.stringify(entries);
+  const html = render(AssignedEquipment, {
+    entries, members: [{ id: "captain", name: "Captain Klaus" }, { id: "swordsmen", name: "Ruins Guard" }],
+  });
+  assert.match(html, /Dagger x 7 - Weapon/);
+  assert.match(html, /Captain Klaus, Ruins Guard/);
+  assert.equal((html.match(/Ruins Guard/g) || []).length, 1);
+  assert.equal((html.match(/<li>/g) || []).length, 3);
+  assert.match(html, /Shield x 1 - Shield/);
+  assert.match(html, /Dagger x 1 - Miscellaneous/);
+  assert.doesNotMatch(html, /model|Model/);
+  assert.equal(JSON.stringify(entries), original);
+  assert.match(render(AssignedEquipment, { entries: [], members: [] }), /No assigned inventory entries/);
+});
 
 test("capacity keeps computed limits and leader without capacity item callouts", () => {
   const cookbook = { id: "cookbook", name: "Halfling Cookbook", member_limit_bonus: 1 };

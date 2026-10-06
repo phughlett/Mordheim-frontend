@@ -61,6 +61,34 @@ export function shopItemPurchaseRarity(
   return item.rarity;
 }
 
+export function AssignedEquipment({ entries, members }: {
+  entries: InventoryEntry[];
+  members: Roster["members"];
+}) {
+  const groups = new Map<string, { name: string; category: InventoryEntry["category"]; quantity: number; memberIds: Set<string> }>();
+  for (const entry of entries) {
+    const key = JSON.stringify([entry.name, entry.category]);
+    const group = groups.get(key) ?? { name: entry.name, category: entry.category, quantity: 0, memberIds: new Set<string>() };
+    group.quantity += entry.quantity;
+    if (entry.memberId) group.memberIds.add(entry.memberId);
+    groups.set(key, group);
+  }
+  const categoryLabels: Record<InventoryEntry["category"], string> = {
+    weapon: "Weapon", armour: "Armour", shield: "Shield", misc: "Miscellaneous",
+  };
+
+  return groups.size ? (
+    <ul className="trading-inventory trading-inventory-assigned">
+      {[...groups].map(([key, group]) => (
+        <li key={key}>
+          <strong>{group.name} x {group.quantity} - {categoryLabels[group.category]}</strong>
+          <span>{[...group.memberIds].map((id) => members.find((member) => member.id === id)?.name || "Unnamed warrior").join(", ")}</span>
+        </li>
+      ))}
+    </ul>
+  ) : <p className="equipment-state">No assigned inventory entries.</p>;
+}
+
 export function StashItem({ entry, roster, enabled, onSend }: {
   entry: InventoryEntry;
   roster: Roster;
@@ -390,7 +418,7 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
 
         <div className="trading-block">
           <h3>Assigned equipment</h3>
-          {data.memberInventory.length ? <ul className="trading-inventory trading-inventory-assigned">{data.memberInventory.map((entry) => <li key={entry.id}><strong>{entry.name} × {entry.quantity}</strong><span>{entry.category} · {roster.members.find((member) => member.id === entry.memberId)?.name ?? "Member"}{entry.modelIndex == null ? "" : ` · model ${entry.modelIndex + 1}`}</span>{entry.description && <small>{entry.description}</small>}</li>)}</ul> : <p className="equipment-state">No assigned inventory entries.</p>}
+          <AssignedEquipment entries={data.memberInventory} members={roster.members} />
         </div>
 
         {campaign && <div className="trading-block">
