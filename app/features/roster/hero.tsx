@@ -25,6 +25,7 @@ const emptyRoster: Roster = {
   warband: "",
   warbandId: null,
   treasury: "0",
+  battlesFought: 0,
   wyrdstone: "0",
   rating: "0",
   members: [],
@@ -64,6 +65,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const [warbands, setWarbands] = useState<WarbandOption[]>([]);
   const [warriorTypes, setWarriorTypes] = useState<WarriorTypeOption[]>([]);
   const [memberEquipment, setMemberEquipment] = useState<WarriorEquipmentData | null>(null);
+  const [battleCountVersion, setBattleCountVersion] = useState(0);
   const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [equipmentError, setEquipmentError] = useState("");
   const [tradingData, setTradingData] = useState<{ rosterId: string; data: TradingData | null } | null>(null);
@@ -163,7 +165,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     setTradingData({ rosterId: roster.id, data });
   }, [roster.id]);
   const currentTradingData = tradingData?.rosterId === roster.id ? tradingData.data : null;
-  const tradingRefreshVersion = JSON.stringify([memberEquipment?.inventory, memberSkills]);
+  const tradingRefreshVersion = JSON.stringify([memberEquipment?.inventory, memberSkills, battleCountVersion]);
   const activeRosterIdRef = useRef(roster.id);
   const activeMemberIdRef = useRef(activeMemberId);
   activeRosterIdRef.current = roster.id;
@@ -176,7 +178,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const heroes = members.filter((member) => member.role === "Hero").length;
   const henchmen = members.filter((member) => member.role === "Henchman").reduce((total, member) => total + member.groupSize, 0);
   const canHire = roster.campaign?.allowedActions.includes("hire") ?? true;
-  const campaignEquipmentLocked = Boolean(roster.campaignId && roster.campaign?.phase !== "setup");
+  const campaignEquipmentLocked = roster.campaignId
+    ? roster.campaign?.phase !== "setup"
+    : roster.battlesFought >= 1;
   const hiredSwords = members.filter((member) => member.role === "Hired Sword").length;
   const capacity = roster.capacity;
   const atMemberLimit = Boolean(capacity && capacity.currentMembers >= capacity.maxMembers);
@@ -264,7 +268,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       })
       .finally(() => { if (!cancelled) setEquipmentLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.groupSize]);
+  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.groupSize, battleCountVersion]);
 
   function loadMemberSkills(memberId: string) {
     let cancelled = false;
@@ -409,6 +413,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       if (!update) return;
       try {
         const stored = await apiRequest<Roster>(`/rosters/${roster.id}`, "PATCH", update);
+        if (update.battlesFought !== undefined) setBattleCountVersion((current) => current + 1);
         setRosters((current) => current.map((item) => item.id === roster.id ? { ...item, ...stored, members: item.members } : item));
         if (rosterTimers.current.size === 0 && memberTimers.current.size === 0) setSaved(true);
       } catch (requestError) {

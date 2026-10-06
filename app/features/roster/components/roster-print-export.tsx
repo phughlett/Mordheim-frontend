@@ -159,7 +159,7 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
           <div><dt>Total Fielded</dt><dd>{totalFielded} warriors</dd></div>
           <div><dt>Rout Test At</dt><dd>{totalFielded === 0 ? "—" : routThreshold} out of action (25%)</dd></div>
           {capacity && <div><dt>Models</dt><dd>{capacity.currentMembers}/{capacity.maxMembers}</dd></div>}
-          {roster.campaign && <div><dt>Battles</dt><dd>{roster.campaign.battlesFought}</dd></div>}
+          <div><dt>Battles</dt><dd>{roster.battlesFought ?? roster.campaign?.battlesFought ?? 0}</dd></div>
           <div><dt>Printed</dt><dd>{data.printedAt}</dd></div>
         </dl>
       </header>

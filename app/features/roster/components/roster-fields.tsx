@@ -23,6 +23,15 @@ export function RosterFields({ roster, onUpdate, readOnly = false }: WarbandCurr
       </label>
       <span>WARBAND</span>
       <strong>{roster.warband || "No warband selected"}</strong>
+      {!roster.campaignId && <label className="detail-field">
+        <span>BATTLES FOUGHT</span>
+        <input aria-label="Battles fought" type="number" min={0} max={2147483647} step={1}
+          value={roster.battlesFought ?? 0} disabled={!roster.id || readOnly}
+          onChange={(event) => {
+            const count = event.target.valueAsNumber;
+            if (Number.isSafeInteger(count) && count >= 0 && count <= 2147483647) onUpdate({ battlesFought: count });
+          }} />
+      </label>}
     </div>
   );
 }

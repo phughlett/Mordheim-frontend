@@ -318,7 +318,7 @@ export function SpellPanel({
             <small>
               {allowTomeRecording
                 ? "Record a Tome already acquired outside a campaign market. Its listed cost is 200+D6×25 GC (Rare 12); recording it here does not purchase it."
-                : "In campaigns, buy the Tome of Magic through Warband stash. Manual Tome recording is disabled here."}
+                : "In campaigns or after the first Freebuild battle, acquire the Tome of Magic through the Mordheim shop and Warband stash. Manual Tome recording is disabled here."}
             </small>
             {allowTomeRecording && <>
               <label className="skills-field">

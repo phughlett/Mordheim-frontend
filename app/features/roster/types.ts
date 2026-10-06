@@ -159,6 +159,18 @@ export interface ShopItem {
   excludedTypeNames?: string[];
   heroOnly?: boolean;
   requiredSkill?: string;
+  grade?: "core" | "1a" | "1b";
+  shopCategory?: "close-combat" | "missile" | "blackpowder" | "armour" | "miscellaneous" | "animals";
+  canPurchase?: boolean;
+  creationOnly?: boolean;
+  maxPerWarband?: number;
+  maxPerModel?: number;
+  requiresOwnedItem?: string;
+  skillByWarband?: Record<string, string>;
+  spellcasterOnly?: boolean;
+  allowedRoles?: string[];
+  purchaseAction?: "ritual" | "permanent-upgrade";
+  priceOverrides?: { typeNames: string[]; baseCost: number; priceDice: number; priceMultiplier: number }[];
 }
 
 export interface TradingRules {
@@ -186,6 +198,11 @@ export interface InventoryEntry {
   eligibleRecipients?: { memberId: string; allowIndividualGroupGear: boolean }[];
   returnQuantity?: number;
   returnModelIndex?: number;
+  nontransferable?: boolean;
+  boundWarriorId?: string | null;
+  upgradeQuantity?: number;
+  unitSaleValue?: number | null;
+  saleRestriction?: string | null;
 }
 
 export interface TradingSearch {
@@ -206,6 +223,7 @@ export interface TradingHero {
   name: string;
   outOfAction: boolean;
   searched: boolean;
+  spellcaster?: boolean;
 }
 
 export interface TradingData {
@@ -215,6 +233,7 @@ export interface TradingData {
   heroes: TradingHero[];
   searches: TradingSearch[];
   canPurchase: boolean;
+  canSell: boolean;
   canSearch: boolean;
   canTransfer: boolean;
   treasury: string;
@@ -349,6 +368,8 @@ export interface WarriorInventoryItem {
   stats: EquipmentStats | null;
   shopItemId?: string | null;
   description?: string;
+  unitSaleValue?: number | null;
+  saleRestriction?: string | null;
 }
 
 export interface WarriorEquipmentData {
@@ -357,6 +378,8 @@ export interface WarriorEquipmentData {
   availableOptions: EquipmentOption[];
   inventory: WarriorInventoryItem[];
   mutations: MutationInventory;
+  canSell?: boolean;
+  recruitmentRefund?: boolean;
 }
 
 export type SkillCategory = "Combat" | "Shooting" | "Strength" | "Speed" | "Special" | "Academic";
@@ -552,6 +575,7 @@ export interface Roster {
   warband: string;
   warbandId: string | null;
   treasury: string;
+  battlesFought: number;
   wyrdstone: string;
   rating: string;
   members: Member[];

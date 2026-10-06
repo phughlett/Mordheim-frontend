@@ -259,7 +259,7 @@ export function MemberDetailsPanel({
       {(spellsData?.canShowSpellSection || spellsError) && (
         <SpellPanel
           key={`spells-${member.id}`}
-          allowTomeRecording={freebuild}
+          allowTomeRecording={freebuild && !equipmentPurchaseLocked}
           data={spellsData}
           pendingAdvanceId={advancementsData?.pendingSkillAdvances[0]?.id ?? null}
           loading={spellsLoading}

@@ -64,6 +64,7 @@ export function InventoryStashReturn({ entry, enabled, onReturn }: {
   const [busy, setBusy] = useState(false);
   const maximum = Math.min(1000, entry.returnQuantity ?? 0);
   const shared = entry.returnModelIndex === -1 && entry.modelIndex !== -1;
+  if (entry.nontransferable) return <small>Permanently poisoned: cannot be traded or returned to stash.</small>;
   return <div className="trading-inline">
     <label className="equipment-field"><span>RETURN{shared ? " PER MODEL" : ""}</span><input aria-label={`Return quantity for ${entry.name}${shared || entry.modelIndex === -1 ? "" : ` model ${(entry.modelIndex ?? 0) + 1}`}`} type="number" min={1} max={Math.max(1, maximum)} value={quantity} disabled={!enabled || busy} onChange={(event) => setQuantity(Math.max(1, Math.min(1000, Math.floor(Number(event.target.value) || 1))))} /></label>
     <button className="outline-button" type="button" disabled={!enabled || busy || maximum < quantity} onClick={() => {
@@ -94,6 +95,8 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       inventoryItemIds: string[];
       modelIndexes: number[];
       shopItemId: string | null;
+      unitSaleValue: number | null;
+      saleRestriction: string | null;
     }>();
     for (const item of data?.inventory ?? []) {
       const key = member.role === "Henchman"
@@ -119,6 +122,8 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           inventoryItemIds: [item.id],
           modelIndexes: [item.modelIndex],
           shopItemId: item.shopItemId ?? null,
+          unitSaleValue: item.unitSaleValue ?? null,
+          saleRestriction: item.saleRestriction ?? null,
         });
       }
     }
@@ -168,7 +173,7 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         <span className="equipment-inventory-label">INVENTORY</span>
         <strong>Weapons &amp; armour</strong>
       </div>
-      {purchaseLocked && <p className="trading-note" role="note">Campaign equipment purchases are locked after setup. Buy through Warband stash, then transfer items here.</p>}
+      {purchaseLocked && <p className="trading-note" role="note">Recruitment equipment shops are closed after the first battle in Freebuild, or after campaign setup. Buy through the Mordheim shop into Warband stash, then transfer items here.</p>}
       {loading ? <p className="equipment-state">Loading equipment...</p> : purchaseLocked ? null : availableOptions.length ? (
         <div className="equipment-purchase-form">
           <label className="equipment-field">
@@ -217,7 +222,10 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       <div className="equipment-owned">
         <span className="equipment-inventory-label">OWNED</span>
         {inventoryStacks.length ? inventoryStacks.map((stack) => {
-          const refund = stack.unitCostPaid * stack.quantity;
+          const creationRefund = data?.recruitmentRefund !== false;
+          const refund = (creationRefund ? stack.unitCostPaid : stack.unitSaleValue ?? 0) * stack.quantity;
+          const saleAvailable = creationRefund ? !stack.shopItemId && refund > 0
+            : Boolean(data?.canSell && stack.unitSaleValue !== null && !stack.saleRestriction);
           const modelNumbers = [...new Set(stack.modelIndexes)].sort((first, second) => first - second).map((index) => index + 1);
           const modelLabel = modelNumbers.length === 1 ? `Model ${modelNumbers[0]}` : `Models ${modelNumbers.join(", ")}`;
           const returns = stashReturns.filter((entry) => stack.inventoryItemIds.includes(entry.id));
@@ -229,12 +237,11 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
               <EquipmentStatsSummary stats={stack.stats} />
             </div>
             <div className="equipment-owned-actions">
-              <strong>{stack.shopItemId ? `Paid ${refund} GC` : `${refund} GC`}</strong>
-              {stack.shopItemId
-                ? <span className="equipment-unsellable">No refund</span>
-                : refund > 0
-                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`Sell ${stack.quantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, stack.inventoryItemIds)}>{sellingStackKey === stack.key ? "Selling..." : `Sell ×${stack.quantity} · ${refund} GC`}</button>
-                : <span className="equipment-unsellable" title="Free equipment cannot be sold">Free · not for sale</span>}
+              <strong>{creationRefund ? "Refund" : "Resale"}: {refund} GC</strong>
+              {saleAvailable
+                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`${creationRefund ? "Refund" : "Sell"} ${stack.quantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, stack.inventoryItemIds)}>{sellingStackKey === stack.key ? "Selling..." : `${creationRefund ? "Refund" : "Sell"} ×${stack.quantity} · ${refund} GC`}</button>
+                : <span className="equipment-unsellable">{creationRefund ? stack.shopItemId ? "No refund" : "Free · not for sale"
+                  : stack.saleRestriction ?? "Sales are unavailable at this campaign stage."}</span>}
               {onReturnToStash && returnEntries.map((entry) => <div key={entry.id}>
                 {member.role === "Henchman" && entry.returnModelIndex !== -1 && <small>Model {(entry.modelIndex ?? 0) + 1}</small>}
                 <InventoryStashReturn entry={entry} enabled={canReturnToStash && sellingStackKey === null} onReturn={onReturnToStash} />

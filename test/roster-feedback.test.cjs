@@ -28,7 +28,7 @@ const { PrintExperienceTrack } = require("../app/features/roster/components/expe
 const { equipmentStacks, RosterPrintSheet } = require("../app/features/roster/components/roster-print-export.tsx");
 const { isCustomShopItemValid, NewCampaignDialog } = require("../app/features/roster/components/new-campaign-dialog.tsx");
 const { AdvancePurchasePanel } = require("../app/features/roster/components/advance-purchase-panel.tsx");
-const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
+const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, RitualPurchase, WeaponUpgrade, filterShopItems, shopItemPriceForType, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
 const { SpellPanel } = require("../app/features/roster/components/spell-panel.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
@@ -42,6 +42,103 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+
+test("Freebuild battle count is editable, read-only shares cannot edit, and campaigns use their sequence", () => {
+  const roster = { id: "roster", name: "Battle ledger", warband: "Mercenaries", battlesFought: 0 };
+  const html = render(RosterFields, { roster, onUpdate: () => {} });
+  assert.match(html, /aria-label="Battles fought"/);
+  assert.match(html, /min="0" max="2147483647" step="1" value="0"/);
+  const readOnly = render(RosterFields, { roster, onUpdate: () => {}, readOnly: true });
+  assert.match(readOnly, /aria-label="Battles fought"[^>]*disabled/);
+  assert.doesNotMatch(render(RosterFields, { roster: { ...roster, campaignId: "campaign" }, onUpdate: () => {} }), /aria-label="Battles fought"/);
+  assert.notEqual(tradingDataRefreshKey(roster), tradingDataRefreshKey({ ...roster, battlesFought: 1 }));
+});
+
+test("stash selling is independent of transfer permissions and displays half-base proceeds", () => {
+  const props = { entry: { id: "stack", name: "Axe", category: "weapon", quantity: 3, unitCostPaid: 5, unitSaleValue: 2, eligibleRecipients: [] },
+    roster: { members: [] }, enabled: false, canSell: true, onSend: async () => {}, onSell: async () => {} };
+  const html = render(StashItem, props);
+  assert.match(html, /aria-label="Sell quantity for Axe"/);
+  assert.match(html, /<button[^>]*>Sell ×1 · 2 GC<\/button>/);
+  assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Sell ×1 · 2 GC/);
+  assert.match(render(StashItem, { ...props, canSell: false }), /<button[^>]*disabled[^>]*>Sell ×1 · 2 GC/);
+  assert.doesNotMatch(render(StashItem, { ...props, entry: { ...props.entry, unitSaleValue: null, saleRestriction: "Bound items cannot be sold." } }), /Sell ×/);
+});
+
+test("post-battle member sales show listed resale prices instead of paid-cost refunds", () => {
+  const props = { member: { id: "hero", role: "Hero", groupSize: 1 }, treasury: "0", loading: false, error: "",
+    purchaseLocked: true, onPurchase: async () => {}, onSell: async () => {}, onSetMutations: async () => true,
+    data: { availableOptions: [], recruitmentRefund: false, canSell: true, mutations: { eligible: false },
+      inventory: [{ id: "rifle", equipmentOptionId: "hunting-rifle", shopItemId: "hunting-rifle", name: "Hunting Rifle", category: "weapon",
+        modelIndex: 0, quantity: 2, unitCostPaid: 206, unitSaleValue: 100, stats: null }] } };
+  const html = render(EquipmentInventoryPanel, props);
+  assert.match(html, /Resale: 200 GC/);
+  assert.match(html, /Sell ×2 · 200 GC/);
+  assert.doesNotMatch(html, /412 GC/);
+  assert.doesNotMatch(render(EquipmentInventoryPanel, { ...props, data: { ...props.data, canSell: false } }), /Sell ×/);
+});
+
+test("graded shop filters cover all six categories and compose with grades without mutating data", () => {
+  const shop = ["close-combat", "missile", "blackpowder", "armour", "miscellaneous", "animals"]
+    .flatMap((shopCategory) => ["core", "1a", "1b"].map((grade) => ({ id: `${shopCategory}-${grade}`, shopCategory, grade })));
+  const before = JSON.stringify(shop);
+  assert.equal(filterShopItems(shop).length, 18);
+  for (const category of ["close-combat", "missile", "blackpowder", "armour", "miscellaneous", "animals"]) {
+    const matching = filterShopItems(shop, category);
+    assert.ok(matching.length, category);
+    assert.ok(matching.every((item) => item.shopCategory === category));
+    for (const grade of ["core", "1a", "1b"]) {
+      assert.deepEqual(filterShopItems(shop, category, grade), shop.filter((item) => item.shopCategory === category && item.grade === grade));
+    }
+  }
+  assert.deepEqual(filterShopItems(shop, "unknown"), []);
+  assert.equal(JSON.stringify(shop), before);
+});
+
+test("buyer-specific prices remove unnecessary dice without changing standard or campaign prices", () => {
+  const item = { id: "lotus", baseCost: 10, priceDice: 1, priceMultiplier: 1, priceOverrides: [
+    { typeNames: ["Skink Priest"], baseCost: 10, priceDice: 0, priceMultiplier: 1 },
+  ] };
+  const before = JSON.stringify(item);
+  assert.equal(shopItemPriceForType(item, "Skink Priest").priceDice, 0);
+  assert.equal(shopItemPriceForType(item, "Youngblood").priceDice, 1);
+  assert.equal(shopItemPriceForType({ ...item, baseCost: 42, priceDice: 0, priceOverrides: [] }, "Skink Priest").baseCost, 42);
+  assert.equal(JSON.stringify(item), before);
+  assert.deepEqual(parseTradingDice("1,1,1,1,1,1,1,1,1,1", 10), Array(10).fill(1));
+});
+
+test("summoning presents a paid ritual, only spellcasters, and no normal purchase or spoils control", () => {
+  const props = { item: { priceDice: 1 }, heroes: [
+    { id: "wizard", name: "Wizard", spellcaster: true },
+    { id: "priest", name: "Prayer user", spellcaster: false },
+    { id: "injured", name: "Injured wizard", spellcaster: true, outOfAction: true },
+    { id: "searched", name: "Spent search", spellcaster: true, searched: true },
+  ], enabled: true, onAttempt: async () => {} };
+  const html = render(RitualPurchase, props);
+  assert.match(html, /even if it fails/);
+  assert.match(html, /Pay and attempt summoning/);
+  assert.match(html, /Wizard/);
+  assert.doesNotMatch(html, /value="priest"/);
+  assert.match(html, /value="injured" disabled=""/);
+  assert.match(html, /value="searched" disabled=""/);
+  assert.doesNotMatch(html, /Buy into stash|Add as combat spoils/);
+});
+
+test("permanent upgrades list only carried unmodified weapons and disable stash returns", () => {
+  const entries = [
+    { id: "weapon", memberId: "group", category: "weapon", name: "Sword", modelIndex: 0, upgradeQuantity: 3 },
+    { id: "other-model", memberId: "group", category: "weapon", name: "Sword", modelIndex: 1, upgradeQuantity: 3 },
+    { id: "armour", memberId: "group", category: "armour", name: "Helmet" },
+    { id: "poisoned", memberId: "group", category: "weapon", name: "Poisoned Sword", nontransferable: true },
+  ];
+  const html = render(WeaponUpgrade, { item: { baseCost: 25 }, entries, members: [{ id: "group", name: "Henchmen" }], enabled: true, treasury: "500", onUpgrade: async () => {} });
+  assert.match(html, /Henchmen · Sword · 3 models/);
+  assert.doesNotMatch(html, /value="other-model"|Helmet|value="poisoned"/);
+  assert.match(html, /cannot be traded, sold or returned/);
+  const bound = render(InventoryStashReturn, { entry: { ...entries[3], quantity: 1, returnQuantity: 1 }, enabled: true, onReturn: async () => {} });
+  assert.match(bound, /cannot be traded or returned/);
+  assert.doesNotMatch(bound, /<button/);
+});
 
 test("combat spoils are Freebuild-only and do not require a price quote", () => {
   const props = { campaign: false, item: { id: "herbs", priceDice: 2, disabled: false }, enabled: true, onAdd: async () => {} };
@@ -191,7 +288,7 @@ test("a printed roster with only one warrior still includes the full experience 
   const member = { id: "hero", name: "First warrior", type: "Youngblood", role: "Hero", experience: "0", groupSize: 1, stats: {} };
   const html = render(RosterPrintSheet, {
     data: {
-      roster: { name: "Test roster", warband: "Mercenaries", treasury: "500", rating: 5, wyrdstone: 0 },
+      roster: { name: "Test roster", warband: "Mercenaries", treasury: "500", rating: 5, wyrdstone: 0, battlesFought: 3 },
       printedAt: "2026-10-05",
       sheets: [{ member, equipment: null, skills: null, spells: null, advancements: { canGainExperience: true } }],
       stash: [{ id: "stash-1", name: "Tome of Magic", category: "misc", quantity: 1, unitCostPaid: 250, description: "A wizard's tome." }],
@@ -200,6 +297,7 @@ test("a printed roster with only one warrior still includes the full experience 
   assert.equal((html.match(/class="print-member"/g) || []).length, 1);
   assert.equal((html.match(/class="print-experience-point/g) || []).length, 90);
   assert.match(html, /Warband stash/);
+  assert.match(html, /<dt>Battles<\/dt><dd>3<\/dd>/);
   assert.match(html, /Tome of Magic ×1/);
   assert.match(html, /A wizard&#x27;s tome\./);
   assert.match(html, /<dt>Total Fielded<\/dt><dd>1 warriors<\/dd>/);
@@ -417,7 +515,7 @@ test("shop-originated member gear cannot be sold for a refund", () => {
     ...props,
     data: { ...props.data, inventory: [{ ...inventoryItem, shopItemId: null, description: "" }] },
   });
-  assert.match(legacyGear, /Sell ×1 · 25 GC/);
+  assert.match(legacyGear, /Refund ×1 · 25 GC/);
 });
 
 test("manual Tome recording is available only outside campaigns", () => {
