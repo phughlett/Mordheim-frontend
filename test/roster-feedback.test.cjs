@@ -37,11 +37,62 @@ const { RosterFields, WarbandCurrency } = require("../app/features/roster/compon
 const { RosterHeading } = require("../app/features/roster/components/roster-heading.tsx");
 const { MemberTable } = require("../app/features/roster/components/member-table.tsx");
 const { RosterSummary } = require("../app/features/roster/components/roster-summary.tsx");
+const { SourceRules, gradeLabel } = require("../app/features/roster/components/source-rules.tsx");
+const { NewRosterDialog } = require("../app/features/roster/components/new-roster-dialog.tsx");
 if (previousAuth) require.cache[authPath] = previousAuth;
 else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+
+test("warband source summaries distinguish references from automation and display grades", () => {
+  assert.equal(gradeLabel("core"), "Core");
+  assert.equal(gradeLabel("1b"), "1B");
+  const html = render(SourceRules, {
+    title: "Warband rules", grade: "1b", sourceUrl: "https://mordheimer.net/docs/warbands",
+    rules: [{ name: "Example rule", summary: "Resolve a conditional effect manually." }],
+  });
+  assert.match(html, /Warband rules · 1B/);
+  assert.match(html, /Reference summaries only/);
+  assert.match(html, /<strong>Example rule:<\/strong>/);
+  assert.match(html, /target="_blank" rel="noreferrer"/);
+  assert.equal(render(SourceRules, {}), "");
+});
+
+test("warband creation shows grades and distinct Amazon variants without changing canonical names", () => {
+  const html = render(NewRosterDialog, {
+    open: true, submitting: false, campaign: { id: "freebuild", name: "Freebuild" },
+    warbands: [
+      { id: "mordheim", name: "Amazons", displayName: "Amazons (Mordheim)", grade: "1b" },
+      { id: "lustria", name: "Amazons (Lustria)", grade: "1b" },
+      { id: "mercenaries", name: "Mercenaries", grade: "core" },
+      { id: "monks", name: "Battle Monks of Cathay", grade: "1c" },
+    ],
+    onCancel: () => {}, onSubmit: () => {},
+  });
+  for (const name of ["Amazons (Mordheim) · 1B", "Amazons (Lustria) · 1B", "Mercenaries · Core", "Battle Monks of Cathay · 1C"]) {
+    assert.ok(html.includes(name), name);
+  }
+});
+
+test("included zero-price starting mounts remain inventory-only, not repeatable shop purchases", () => {
+    const html = render(EquipmentInventoryPanel, {
+      member: { id: "knight", role: "Hero", groupSize: 1 }, treasury: "415", loading: false, error: "",
+      data: {
+        mutations: { eligible: false, required: false, options: [] },
+        availableOptions: [
+          { id: "horse", name: "Riding Horse", category: "misc", unitCost: 0, firstFree: true, listName: "Mounts" },
+          { id: "sword", name: "Sword", category: "weapon", unitCost: 10, firstFree: false, listName: "Weapons" },
+        ],
+        inventory: [{ id: "carried-horse", equipmentOptionId: "horse", name: "Riding Horse", category: "misc",
+          quantity: 1, unitCostPaid: 0, modelIndex: 0, stats: null }],
+      },
+      onPurchase: async () => {}, onSell: async () => {}, onSetMutations: async () => true,
+    });
+    assert.doesNotMatch(html, /<option value="horse"/);
+    assert.match(html, /<option value="sword"/);
+    assert.match(html, /Riding Horse ×1/);
+});
 
 test("Freebuild battle count is editable, read-only shares cannot edit, and campaigns use their sequence", () => {
   const roster = { id: "roster", name: "Battle ledger", warband: "Mercenaries", battlesFought: 0 };
@@ -302,6 +353,28 @@ test("a printed roster with only one warrior still includes the full experience 
   assert.match(html, /A wizard&#x27;s tome\./);
   assert.match(html, /<dt>Total Fielded<\/dt><dd>1 warriors<\/dd>/);
   assert.match(html, /<dt>Rout Test At<\/dt><dd>1 out of action \(25%\)<\/dd>/);
+});
+
+test("PDF includes warband and member reference summaries, grade and full source link", () => {
+  const sourceUrl = "https://mordheimer.net/docs/warbands/grade-1b-warbands/forest-goblins";
+  const html = render(RosterPrintSheet, { data: {
+    roster: {
+      name: "Forest", warband: "Forest Goblins", treasury: "500", wyrdstone: 0, rating: 5,
+      capacity: { currentMembers: 1, maxMembers: 20, grade: "1b", sourceUrl,
+        specialRules: [{ name: "Reference only", summary: "A manual warband rule." }] },
+    },
+    sheets: [{
+      member: { id: "leader", name: "Leader", type: "Chieftain", role: "Hero", experience: "0", groupSize: 1,
+        stats: {}, specialRules: [{ name: "Warrior rule", summary: "A manual warrior rule." }] },
+      equipment: null, skills: null, spells: null, advancements: { canGainExperience: true },
+    }],
+    stash: [], printedAt: "2026-10-06",
+  } });
+  assert.match(html, /<dt>Grade<\/dt><dd>1B<\/dd>/);
+  assert.match(html, /Reference summaries; resolve effects manually/);
+  assert.match(html, /A manual warband rule/);
+  assert.match(html, /A manual warrior rule/);
+  assert.ok(html.includes(`href="${sourceUrl}"`));
 });
 
 test("PDF fielding counts include every Henchman model and Hired Sword, independently of capacity", () => {

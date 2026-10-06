@@ -4,6 +4,7 @@ import { statLabels, type EquipmentSpecialRule, type EquipmentStats, type Invent
 import type { WarriorAdvancementsData } from "../types";
 import { PrintExperienceTrack } from "./experience/print-experience-track";
 import { fieldingSummary } from "../fielding-summary";
+import { gradeLabel } from "./source-rules";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -153,6 +154,7 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
         </div>
         <dl className="print-totals">
           <div><dt>Campaign</dt><dd>{roster.campaignName ?? "Freebuild"}</dd></div>
+          {capacity?.grade && <div><dt>Grade</dt><dd>{gradeLabel(capacity.grade)}</dd></div>}
           <div><dt>Gold Crowns</dt><dd>{roster.treasury} GC</dd></div>
           <div><dt>Wyrdstone</dt><dd>{roster.wyrdstone}</dd></div>
           <div><dt>Rating</dt><dd>{roster.rating}</dd></div>
@@ -165,6 +167,12 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
       </header>
 
       {sheets.length === 0 && <p>This warband has no members.</p>}
+      {(capacity?.specialRules?.length ?? 0) > 0 && <section className="print-glossary">
+        <h2>Warband rules</h2>
+        <p>Reference summaries; resolve effects manually.</p>
+        {capacity?.sourceUrl && <p>Source: <a href={capacity.sourceUrl}>{capacity.sourceUrl}</a></p>}
+        {capacity?.specialRules?.map((rule) => <p key={rule.name}><strong>{rule.name}:</strong> {rule.summary}</p>)}
+      </section>}
 
       {stash.length > 0 && <section className="print-stash">
         <h2>Warband stash</h2>
@@ -231,6 +239,7 @@ function MemberCard({ sheet }: { sheet: MemberSheet }) {
         <tbody><tr>{statLabels.map((label) => <td key={label}>{member.stats[label] || "-"}</td>)}</tr></tbody>
       </table>
       <PrintExperienceTrack role={member.role} experience={member.experience} canGainExperience={sheet.advancements.canGainExperience} />
+      {member.specialRules?.map((rule) => <p key={rule.name}><strong>{rule.name}:</strong> {rule.summary}</p>)}
       <div className="print-member-body">
         <div>
           <h3>Equipment</h3>

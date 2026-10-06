@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { CampaignOption, WarbandOption } from "../types";
+import { gradeLabel, SourceRules } from "./source-rules";
 
 interface NewRosterDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ export function NewRosterDialog({ open, submitting, warbands, campaign, onCancel
   const [warbandId, setWarbandId] = useState("");
   const [gc, setGc] = useState("500");
   if (!open || !campaign) return null;
+  const selected = warbands.find((warband) => warband.id === warbandId);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,9 +34,12 @@ export function NewRosterDialog({ open, submitting, warbands, campaign, onCancel
             <span>WARBAND</span>
             <select autoFocus required value={warbandId} onChange={(event) => setWarbandId(event.target.value)}>
               <option value="">Select a warband</option>
-              {warbands.map((warband) => <option key={warband.id} value={warband.id}>{warband.name}</option>)}
+              {warbands.map((warband) => <option key={warband.id} value={warband.id}>
+                {warband.displayName ?? warband.name}{warband.grade ? ` · ${gradeLabel(warband.grade)}` : ""}
+              </option>)}
             </select>
           </label>
+          {selected && <SourceRules title="Warband rules" rules={selected.specialRules} grade={selected.grade} sourceUrl={selected.sourceUrl} />}
           {campaign.id === "freebuild" ? (
             <label className="detail-field">
               <span>STARTING GC</span>

@@ -1,5 +1,6 @@
 import { useId } from "react";
 import type { Roster } from "../types";
+import { SourceRules } from "./source-rules";
 
 interface WarbandCurrencyProps {
   roster: Roster;
@@ -9,6 +10,7 @@ interface WarbandCurrencyProps {
 
 export function RosterFields({ roster, onUpdate, readOnly = false }: WarbandCurrencyProps) {
   return (
+    <>
     <div className="overview-warband">
       <label className="detail-field">
         <span>WARBAND NAME</span>
@@ -33,6 +35,8 @@ export function RosterFields({ roster, onUpdate, readOnly = false }: WarbandCurr
           }} />
       </label>}
     </div>
+    <SourceRules title="Warband rules" rules={roster.capacity?.specialRules} grade={roster.capacity?.grade} sourceUrl={roster.capacity?.sourceUrl} />
+    </>
   );
 }
 

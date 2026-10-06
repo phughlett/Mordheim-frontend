@@ -8,6 +8,7 @@ import { SpellPanel } from "./spell-panel";
 import { LadsGotTalentPanel } from "./lads-got-talent-panel";
 import type { InventoryEntry, PurchaseAdvanceInput } from "../types";
 import { LeaderBadge } from "./leader-badge";
+import { SourceRules } from "./source-rules";
 
 interface MemberDetailsPanelProps {
   member: Member;
@@ -178,6 +179,7 @@ export function MemberDetailsPanel({
           {selectedWarriorType?.conditionText && <small>{selectedWarriorType.conditionText}</small>}
         </div>
       </div>
+      <SourceRules rules={selectedWarriorType?.specialRules ?? member.specialRules} />
       <AdvancementPanel
         onPurchaseAdvance={onPurchaseAdvance}
         treasury={rosterTreasury}

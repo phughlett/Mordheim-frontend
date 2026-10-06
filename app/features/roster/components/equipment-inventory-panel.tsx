@@ -81,7 +81,7 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
   const [quantity, setQuantity] = useState(1);
   const [purchasing, setPurchasing] = useState(false);
   const [sellingStackKey, setSellingStackKey] = useState<string | null>(null);
-  const availableOptions = data?.availableOptions ?? [];
+  const availableOptions = (data?.availableOptions ?? []).filter((option) => !(option.firstFree && option.unitCost === 0));
   const inventoryStacks = (() => {
     const stacks = new Map<string, {
       key: string;

@@ -2,10 +2,19 @@ export const statLabels = ["M", "WS", "BS", "S", "T", "W", "I", "A", "Ld"] as co
 
 export type StatLabel = (typeof statLabels)[number];
 export type MemberRole = "Hero" | "Henchman" | "Hired Sword";
+export type WarbandGrade = "core" | "1a" | "1b" | "1c";
+export interface SourceRule {
+  name: string;
+  summary: string;
+}
 
 export interface WarbandOption {
   id: string;
   name: string;
+  displayName?: string;
+  grade?: WarbandGrade | null;
+  sourceUrl?: string | null;
+  specialRules?: SourceRule[];
   sourceReference: string;
   maxHeroes: number;
   maxMembers: number;
@@ -23,6 +32,9 @@ export interface CapacityModifier {
 }
 
 export interface RosterCapacity {
+  grade?: WarbandGrade | null;
+  sourceUrl?: string | null;
+  specialRules?: SourceRule[];
   currentMembers: number;
   currentHeroes: number;
   maxHeroes: number;
@@ -38,6 +50,7 @@ export interface RosterCapacity {
 }
 
 export interface WarriorTypeOption {
+  specialRules?: SourceRule[];
   id: string;
   name: string;
   category: MemberRole;
@@ -90,6 +103,7 @@ export interface HiredSwordEquipmentChoice {
 }
 
 export interface Member {
+  specialRules?: SourceRule[];
   id: string;
   name: string;
   groupSize: number;
