@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { EquipmentStats, Member, WarriorEquipmentData } from "../types";
+import type { EquipmentCategory, EquipmentStats, InventoryEntry, Member, WarriorEquipmentData } from "../types";
 import { MutationInventoryPanel } from "./mutation-inventory-panel";
 
 function EquipmentStatsSummary({ stats }: { stats: EquipmentStats | null }) {
@@ -46,12 +46,35 @@ interface EquipmentInventoryPanelProps {
   data: WarriorEquipmentData | null;
   loading: boolean;
   error: string;
+  purchaseLocked?: boolean;
   onPurchase: (equipmentOptionId: string, modelIndex: number, quantity: number) => Promise<void>;
   onSell: (inventoryItemIds: string[]) => Promise<void>;
   onSetMutations: (mutationIds: string[]) => Promise<boolean>;
+  stashReturns?: InventoryEntry[];
+  canReturnToStash?: boolean;
+  onReturnToStash?: (inventoryId: string, quantity: number, modelIndex: number) => Promise<void>;
 }
 
-export function EquipmentInventoryPanel({ member, treasury, data, loading, error, onPurchase, onSell, onSetMutations }: EquipmentInventoryPanelProps) {
+export function InventoryStashReturn({ entry, enabled, onReturn }: {
+  entry: InventoryEntry;
+  enabled: boolean;
+  onReturn: (inventoryId: string, quantity: number, modelIndex: number) => Promise<void>;
+}) {
+  const [quantity, setQuantity] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const maximum = Math.min(1000, entry.returnQuantity ?? 0);
+  const shared = entry.returnModelIndex === -1 && entry.modelIndex !== -1;
+  return <div className="trading-inline">
+    <label className="equipment-field"><span>RETURN{shared ? " PER MODEL" : ""}</span><input aria-label={`Return quantity for ${entry.name}${shared || entry.modelIndex === -1 ? "" : ` model ${(entry.modelIndex ?? 0) + 1}`}`} type="number" min={1} max={Math.max(1, maximum)} value={quantity} disabled={!enabled || busy} onChange={(event) => setQuantity(Math.max(1, Math.min(1000, Math.floor(Number(event.target.value) || 1))))} /></label>
+    <button className="outline-button" type="button" disabled={!enabled || busy || maximum < quantity} onClick={() => {
+      setBusy(true);
+      void onReturn(entry.id, quantity, entry.returnModelIndex ?? entry.modelIndex ?? 0).finally(() => setBusy(false));
+    }}>{busy ? "Returning..." : `Return to stash${shared ? " · all models" : ""}`}</button>
+    {shared && <small>Returns the same quantity from every model.</small>}
+  </div>;
+}
+
+export function EquipmentInventoryPanel({ member, treasury, data, loading, error, purchaseLocked = false, onPurchase, onSell, onSetMutations, stashReturns = [], canReturnToStash = false, onReturnToStash }: EquipmentInventoryPanelProps) {
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [modelIndex, setModelIndex] = useState(-1);
   const [quantity, setQuantity] = useState(1);
@@ -66,18 +89,23 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       unitCostPaid: number;
       sourceReference: string;
       stats: EquipmentStats | null;
+      description: string;
+      category: EquipmentCategory;
       inventoryItemIds: string[];
       modelIndexes: number[];
+      shopItemId: string | null;
     }>();
     for (const item of data?.inventory ?? []) {
       const key = member.role === "Henchman"
-        ? `${item.equipmentOptionId}/${item.unitCostPaid}`
+        ? `${item.shopItemId ? `shop:${item.shopItemId}` : `option:${item.equipmentOptionId}`}/${item.unitCostPaid}`
         : item.id;
       const stack = stacks.get(key);
       if (stack) {
         stack.quantity += item.quantity;
         stack.inventoryItemIds.push(item.id);
         stack.modelIndexes.push(item.modelIndex);
+        if (!stack.description && item.description) stack.description = item.description;
+        if (item.shopItemId) stack.shopItemId = item.shopItemId;
       } else {
         stacks.set(key, {
           key,
@@ -86,8 +114,11 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           unitCostPaid: item.unitCostPaid,
           sourceReference: item.sourceReference,
           stats: item.stats,
+          description: item.description ?? "",
+          category: item.category,
           inventoryItemIds: [item.id],
           modelIndexes: [item.modelIndex],
+          shopItemId: item.shopItemId ?? null,
         });
       }
     }
@@ -137,7 +168,8 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         <span className="equipment-inventory-label">INVENTORY</span>
         <strong>Weapons &amp; armour</strong>
       </div>
-      {loading ? <p className="equipment-state">Loading equipment...</p> : availableOptions.length ? (
+      {purchaseLocked && <p className="trading-note" role="note">Campaign equipment purchases are locked after setup. Buy through Warband stash, then transfer items here.</p>}
+      {loading ? <p className="equipment-state">Loading equipment...</p> : purchaseLocked ? null : availableOptions.length ? (
         <div className="equipment-purchase-form">
           <label className="equipment-field">
             <span>ITEM</span>
@@ -188,17 +220,25 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           const refund = stack.unitCostPaid * stack.quantity;
           const modelNumbers = [...new Set(stack.modelIndexes)].sort((first, second) => first - second).map((index) => index + 1);
           const modelLabel = modelNumbers.length === 1 ? `Model ${modelNumbers[0]}` : `Models ${modelNumbers.join(", ")}`;
+          const returns = stashReturns.filter((entry) => stack.inventoryItemIds.includes(entry.id));
+          const returnEntries = returns[0]?.returnModelIndex === -1 ? returns.slice(0, 1) : returns;
           return (
           <div className="equipment-owned-item" key={stack.key}>
             <div className="equipment-owned-item-main">
-              <span>{stack.name} ×{stack.quantity}<small>{member.role === "Henchman" ? modelLabel : null}</small></span>
+              <span>{stack.name} ×{stack.quantity}<small>{stack.category}{member.role === "Henchman" ? ` · ${modelLabel}` : ""}</small>{stack.description && <small>{stack.description}</small>}</span>
               <EquipmentStatsSummary stats={stack.stats} />
             </div>
             <div className="equipment-owned-actions">
-              <strong>{refund} GC</strong>
-              {refund > 0
+              <strong>{stack.shopItemId ? `Paid ${refund} GC` : `${refund} GC`}</strong>
+              {stack.shopItemId
+                ? <span className="equipment-unsellable">No refund</span>
+                : refund > 0
                 ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`Sell ${stack.quantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, stack.inventoryItemIds)}>{sellingStackKey === stack.key ? "Selling..." : `Sell ×${stack.quantity} · ${refund} GC`}</button>
                 : <span className="equipment-unsellable" title="Free equipment cannot be sold">Free · not for sale</span>}
+              {onReturnToStash && returnEntries.map((entry) => <div key={entry.id}>
+                {member.role === "Henchman" && entry.returnModelIndex !== -1 && <small>Model {(entry.modelIndex ?? 0) + 1}</small>}
+                <InventoryStashReturn entry={entry} enabled={canReturnToStash && sellingStackKey === null} onReturn={onReturnToStash} />
+              </div>)}
             </div>
           </div>
           );

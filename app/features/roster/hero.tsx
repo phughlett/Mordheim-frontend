@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type LadsGotTalentOptions, type LearnSpellInput, type Member, type MemberRole, type RecordAdvanceInput, type Roster, type SkillCategoryChoice, type SpellRollResponse, type WarbandOption, type WarriorAdvancementsData, type WarriorEquipmentData, type WarriorSkillsData, type WarriorSpellsData, type WarriorTypeOption } from "./types";
 import { CapacityPanel } from "./components/capacity-panel";
 import { AdvancementPanel } from "./components/advancement-panel";
 import { MemberDetailsPanel } from "./components/member-details-panel";
 import { MemberTable } from "./components/member-table";
-import type { AdvancePurchaseRules, CampaignOption, PurchaseAdvanceInput } from "./types";
+import type { AdvancePurchaseRules, CampaignOption, PurchaseAdvanceInput, TradingData, TradingRules } from "./types";
 import { NewRosterDialog } from "./components/new-roster-dialog";
 import { MutationHireDialog } from "./components/mutation-hire-dialog";
 import { RosterFields } from "./components/roster-fields";
@@ -17,6 +17,7 @@ import { RosterPrintExport } from "./components/roster-print-export";
 import { RosterSummary } from "./components/roster-summary";
 import { RosterTopbar } from "./components/roster-topbar";
 import { SpellPanel } from "./components/spell-panel";
+import { WarbandTradingPanel } from "./components/warband-trading-panel";
 
 const emptyRoster: Roster = {
   id: "",
@@ -65,6 +66,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const [memberEquipment, setMemberEquipment] = useState<WarriorEquipmentData | null>(null);
   const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [equipmentError, setEquipmentError] = useState("");
+  const [tradingData, setTradingData] = useState<{ rosterId: string; data: TradingData | null } | null>(null);
   const [memberSkills, setMemberSkills] = useState<WarriorSkillsData | null>(null);
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [skillsError, setSkillsError] = useState("");
@@ -157,6 +159,15 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const activeCampaign = activeCampaignId === FREEBUILD ? freebuildOption : campaigns.find((item) => item.id === activeCampaignId) ?? null;
   const roster = viewing ?? campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
   const readOnly = viewing !== null;
+  const onTradingDataChanged = useCallback((data: TradingData | null) => {
+    setTradingData({ rosterId: roster.id, data });
+  }, [roster.id]);
+  const currentTradingData = tradingData?.rosterId === roster.id ? tradingData.data : null;
+  const tradingRefreshVersion = JSON.stringify([memberEquipment?.inventory, memberSkills]);
+  const activeRosterIdRef = useRef(roster.id);
+  const activeMemberIdRef = useRef(activeMemberId);
+  activeRosterIdRef.current = roster.id;
+  activeMemberIdRef.current = activeMemberId;
   const shareLink = roster.shareCode
     ? `${window.location.origin}/?share=${encodeURIComponent(roster.shareCode)}`
     : "";
@@ -165,6 +176,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const heroes = members.filter((member) => member.role === "Hero").length;
   const henchmen = members.filter((member) => member.role === "Henchman").reduce((total, member) => total + member.groupSize, 0);
   const canHire = roster.campaign?.allowedActions.includes("hire") ?? true;
+  const campaignEquipmentLocked = Boolean(roster.campaignId && roster.campaign?.phase !== "setup");
   const hiredSwords = members.filter((member) => member.role === "Hired Sword").length;
   const capacity = roster.capacity;
   const atMemberLimit = Boolean(capacity && capacity.currentMembers >= capacity.maxMembers);
@@ -275,7 +287,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       return;
     }
     return loadMemberSkills(selectedMember.id);
-  }, [selectedMember?.id, selectedMember?.warriorTypeId]);
+  }, [selectedMember?.id, selectedMember?.warriorTypeId, capacity?.leader?.id]);
 
   useEffect(() => {
     if (!selectedMember) {
@@ -336,6 +348,43 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
 
   async function refreshRosters() {
     setRosters(await apiRequest<Roster[]>("/rosters"));
+  }
+
+  async function refreshAfterTrading() {
+    const updatedRoster = await apiRequest<Roster>(`/rosters/${roster.id}`);
+    replaceRoster(updatedRoster);
+    if (!activeMemberId || !updatedRoster.members.some((member) => member.id === activeMemberId)) return;
+    const memberId = activeMemberId;
+    const [equipment, skills, advancements, spells] = await Promise.all([
+      apiRequest<WarriorEquipmentData>(`/members/${memberId}/equipment`),
+      apiRequest<WarriorSkillsData>(`/members/${memberId}/skills`),
+      apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances`),
+      apiRequest<WarriorSpellsData>(`/members/${memberId}/spells`),
+    ]);
+    if (activeRosterIdRef.current !== roster.id || activeMemberIdRef.current !== memberId) return;
+    setMemberEquipment(equipment);
+    setMemberSkills(skills);
+    setMemberAdvancements(advancements);
+    setMemberSpells(spells);
+    setEquipmentError("");
+    setSkillsError("");
+    setAdvancementsError("");
+    setSpellsError("");
+    if (activeRosterIdRef.current === roster.id && rosterTimers.current.size === 0 && memberTimers.current.size === 0) setSaved(true);
+  }
+
+  async function returnToStash(memberId: string, inventoryId: string, quantity: number, modelIndex: number) {
+    setEquipmentError("");
+    setSaved(false);
+    try {
+      await apiRequest<TradingData>(`/rosters/${roster.id}/trading/transfer`, "POST", {
+        direction: "to_stash", memberId, inventoryId, quantity, modelIndex,
+      });
+      await refreshAfterTrading();
+      setSaved(true);
+    } catch (requestError) {
+      setEquipmentError(requestError instanceof Error ? requestError.message : "Could not return equipment to stash.");
+    }
   }
 
   function replaceRoster(updated: Roster) {
@@ -465,6 +514,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
 
   async function purchaseEquipment(memberId: string, equipmentOptionId: string, modelIndex: number, quantity: number) {
     if (!roster.id) return;
+    if (campaignEquipmentLocked) {
+      setEquipmentError("Campaign equipment purchases are locked after setup. Buy through Warband stash, then transfer items to a member.");
+      return;
+    }
     setSaved(false);
     try {
       const purchase = await apiRequest<WarriorEquipmentData & { treasury: string }>(`/members/${memberId}/equipment`, "POST", {
@@ -726,9 +779,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     setActiveMemberId(null);
   }
 
-  async function createCampaign(name: string, maxGc: number, advancePurchaseRules: AdvancePurchaseRules) {
+  async function createCampaign(name: string, maxGc: number, advancePurchaseRules: AdvancePurchaseRules, tradingRules: TradingRules) {
     try {
-      const created = await apiRequest<CampaignOption>("/campaigns", "POST", { name, maxGc, advancePurchaseRules });
+      const created = await apiRequest<CampaignOption>("/campaigns", "POST", { name, maxGc, advancePurchaseRules, tradingRules });
       setCampaigns((current) => [...current, created]);
       selectCampaign(created.id);
       setError("");
@@ -890,20 +943,6 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
-  async function setCapacityModifier(modifierId: string, enabled: boolean) {
-    if (!roster.id || !capacity) return;
-    const modifierIds = new Set(capacity.selectedModifiers.map((modifier) => modifier.id));
-    if (enabled) modifierIds.add(modifierId);
-    else modifierIds.delete(modifierId);
-    try {
-      const updatedRoster = await apiRequest<Roster>(`/rosters/${roster.id}/capacity-modifiers`, "PUT", { modifierIds: [...modifierIds] });
-      setRosters((current) => current.map((item) => item.id === roster.id ? updatedRoster : item));
-      setError("");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not update capacity items.");
-    }
-  }
-
   return (
     <div className="roster-app">
       <RosterSidebar
@@ -945,10 +984,8 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
           <fieldset className="readonly-fieldset" disabled={readOnly}>
           <RosterHeading
             rosterId={roster.id}
-            name={roster.name}
             loading={loading}
             deleting={deletingRoster}
-            onNameChange={(name) => updateRoster({ name })}
             onDelete={removeRoster}
             onCreate={openNewRosterDialog}
           />
@@ -958,9 +995,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
           )}
           <section className="roster-overview" aria-label="Warband overview">
             <RosterFields roster={roster} onUpdate={updateRoster} readOnly={readOnly} />
-            {capacity && <CapacityPanel capacity={capacity} onToggleModifier={setCapacityModifier} />}
+            {capacity && <CapacityPanel capacity={capacity} />}
             <RosterSummary roster={roster} heroes={heroes} henchmen={henchmen} hiredSwords={hiredSwords} />
           </section>
+          {roster.id && <WarbandTradingPanel key={roster.id} roster={roster} request={apiRequest} onChanged={refreshAfterTrading} onUpdateRoster={updateRoster} readOnly={readOnly} refreshVersion={tradingRefreshVersion} onDataChanged={onTradingDataChanged} />}
 
           <section className="roster-section">
             <div className="section-heading">
@@ -1016,6 +1054,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   freebuild={!roster.campaignId}
                   members={roster.members}
                   activeMemberId={activeMemberId}
+                  leaderId={capacity?.leader?.id}
                   warriorTypes={warriorTypes}
                   memberOrderCustomized={roster.memberOrderCustomized}
                   onReorderMembers={reorderMembers}
@@ -1040,6 +1079,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   equipmentData={memberEquipment}
                   equipmentLoading={equipmentLoading}
                   equipmentError={equipmentError}
+                  equipmentPurchaseLocked={campaignEquipmentLocked}
+                  stashReturns={currentTradingData?.memberInventory.filter((entry) => entry.memberId === selectedMember.id) ?? []}
+                  canReturnToStash={!readOnly && Boolean(currentTradingData?.canTransfer)}
+                  onReturnToStash={returnToStash}
                   skillsData={memberSkills}
                   skillsLoading={skillsLoading}
                   skillsError={skillsError}

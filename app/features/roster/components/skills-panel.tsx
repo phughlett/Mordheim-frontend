@@ -24,11 +24,12 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
   const availableSkills = data?.availableSkills ?? [];
   const eligibility = data?.eligibility ?? [];
   const learnedSkills = data?.learnedSkills ?? [];
+  const hasLearnedSkills = learnedSkills.some((skill) => !skill.isLeaderAbility);
   const pendingSkillAdvances = data?.pendingSkillAdvances ?? [];
   const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
   const selectedSkill = availableSkills.find((skill) => skill.id === selectedSkillId);
 
-  const showPicker = Boolean(listPicker) && learnedSkills.length === 0 && (editingLists || (!loading && eligibility.length === 0));
+  const showPicker = Boolean(listPicker) && !hasLearnedSkills && (editingLists || (!loading && eligibility.length === 0));
 
   async function learnSelectedSkill() {
     if (!selectedSkill || !selectedAdvanceId) return;
@@ -60,8 +61,8 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
           <button
             className="skills-lists-button"
             type="button"
-            disabled={learnedSkills.length > 0}
-            title={learnedSkills.length > 0 ? "Skill lists are locked once a skill has been learned." : "Change the skill lists this Hero can learn from."}
+            disabled={hasLearnedSkills}
+            title={hasLearnedSkills ? "Skill lists are locked once a skill has been learned." : "Change the skill lists this Hero can learn from."}
             onClick={() => setEditingLists(!showPicker)}
           >
             {showPicker ? "Close lists" : "Change skill lists"}
@@ -120,12 +121,12 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
         {learnedSkills.length ? learnedSkills.map((skill) => (
           <div className="skills-learned-item" key={skill.warriorSkillId}>
             <div className="skills-learned-item-main">
-              <span>{skill.name}<small>{skill.isStarting ? "Starting · " : ""}{skill.category}{skill.specialListName ? ` · ${skill.specialListName}` : ""}</small></span>
+              <span>{skill.name}<small>{skill.isLeaderAbility ? "Current leader · " : skill.isStarting ? "Starting · " : ""}{skill.category}{skill.specialListName ? ` · ${skill.specialListName}` : ""}</small></span>
               <p className="skills-learned-description">{skill.description}</p>
               {skill.purchaseCost != null && <small>Purchased · {skill.purchaseCost} GC · forgetting refunds the latest purchase during roster creation.</small>}
             </div>
-            <button className="skills-forget-button" type="button" disabled={forgettingId !== null || skill.isStarting} aria-label={skill.isStarting ? `${skill.name} is a starting ability` : `Forget ${skill.name}`} onClick={() => void forgetLearnedSkill(skill.warriorSkillId)}>
-              {skill.isStarting ? "Starting" : forgettingId === skill.warriorSkillId ? "Forgetting..." : "Forget"}
+            <button className="skills-forget-button" type="button" disabled={forgettingId !== null || skill.isStarting || skill.isLeaderAbility} aria-label={skill.isLeaderAbility ? `${skill.name} is granted while leading` : skill.isStarting ? `${skill.name} is a starting ability` : `Forget ${skill.name}`} onClick={() => void forgetLearnedSkill(skill.warriorSkillId)}>
+              {skill.isLeaderAbility ? "Leader" : skill.isStarting ? "Starting" : forgettingId === skill.warriorSkillId ? "Forgetting..." : "Forget"}
             </button>
           </div>
         )) : <p className="skills-state">No skills learned yet.</p>}

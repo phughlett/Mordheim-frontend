@@ -30,6 +30,7 @@ export interface RosterCapacity {
   maxMembers: number;
   memberTypeBonus: number;
   itemBonus: number;
+  leader: { id: string; name: string } | null;
   limitsSourceReference: string;
   limitsRule: string;
   selectedModifiers: CapacityModifier[];
@@ -133,12 +134,102 @@ export interface WarriorAdvance {
 
 export interface AdvancePurchaseRules {
   enabled: boolean;
+  skillsEnabled: boolean;
   skillCost: number;
   stats: Record<StatLabel, { firstCost: number; additionalCost: number; maxIncreases: number | null }>;
 }
 
+export type ShopCategory = "weapon" | "armour" | "shield" | "misc";
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  category: ShopCategory;
+  baseCost: number;
+  priceDice: number;
+  priceMultiplier: number;
+  rarity: number | null;
+  rarityOverrides?: Record<string, number | null>;
+  description: string;
+  sourceReference: string;
+  disabled?: boolean;
+  allowedWarbands?: string[];
+  excludedWarbands?: string[];
+  allowedTypeNames?: string[];
+  excludedTypeNames?: string[];
+  heroOnly?: boolean;
+  requiredSkill?: string;
+}
+
+export interface TradingRules {
+  overrides: Record<string, {
+    disabled?: boolean;
+    baseCost?: number;
+    priceDice?: number;
+    priceMultiplier?: number;
+    rarity?: number | null;
+  }>;
+  customItems: ShopItem[];
+}
+
+export interface InventoryEntry {
+  id: string;
+  name: string;
+  category: ShopCategory;
+  quantity: number;
+  unitCostPaid: number;
+  shopItemId: string | null;
+  equipmentOptionId: string | null;
+  description: string;
+  memberId?: string;
+  modelIndex?: number;
+  eligibleRecipients?: { memberId: string; allowIndividualGroupGear: boolean }[];
+  returnQuantity?: number;
+  returnModelIndex?: number;
+}
+
+export interface TradingSearch {
+  id: string;
+  heroId: string | null;
+  heroName: string;
+  itemId: string;
+  itemName: string;
+  dice: number[];
+  modifier: number;
+  total: number;
+  success: boolean;
+  purchased: boolean;
+}
+
+export interface TradingHero {
+  id: string;
+  name: string;
+  outOfAction: boolean;
+  searched: boolean;
+}
+
+export interface TradingData {
+  shop: ShopItem[];
+  stash: InventoryEntry[];
+  memberInventory: InventoryEntry[];
+  heroes: TradingHero[];
+  searches: TradingSearch[];
+  canPurchase: boolean;
+  canSearch: boolean;
+  canTransfer: boolean;
+  treasury: string;
+}
+
+export interface TradingQuote {
+  id: string;
+  itemId: string;
+  price: number;
+  dice: number[];
+}
+
 export interface AdvancePurchaseOptions {
   enabled: boolean;
+  skillsEnabled: boolean;
   canPurchase: boolean;
   pendingAdvances: boolean;
   nextExperience: number | null;
@@ -183,7 +274,7 @@ export interface RecordAdvanceInput {
   stat?: StatLabel;
 }
 
-export type EquipmentCategory = "weapon" | "armour" | "shield" | "set";
+export type EquipmentCategory = "weapon" | "armour" | "shield" | "set" | "misc";
 
 export interface EquipmentSpecialRule {
   name: string;
@@ -256,6 +347,8 @@ export interface WarriorInventoryItem {
   unitCostPaid: number;
   sourceReference: string;
   stats: EquipmentStats | null;
+  shopItemId?: string | null;
+  description?: string;
 }
 
 export interface WarriorEquipmentData {
@@ -289,7 +382,8 @@ export interface SkillOption {
 
 export interface LearnedSkill extends SkillOption {
   warriorSkillId: string;
-  acquiredAt: string;
+  acquiredAt: string | null;
+  isLeaderAbility?: boolean;
   notes: string | null;
   isStarting: boolean;
   purchaseCost: number | null;

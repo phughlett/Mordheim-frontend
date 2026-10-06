@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AdvancePurchaseRules, CampaignOption, Roster } from "../types";
+import type { AdvancePurchaseRules, CampaignOption, Roster, TradingRules } from "../types";
 import { NewCampaignDialog } from "./new-campaign-dialog";
 import { CorrectionLauncher } from "../../corrections/correction-launcher";
 
@@ -15,7 +15,7 @@ interface RosterSidebarProps {
   campaigns: CampaignOption[];
   activeCampaignId: string;
   onSelectCampaign: (campaignId: string) => void;
-  onCreateCampaign: (name: string, maxGc: number, rules: AdvancePurchaseRules) => Promise<boolean>;
+  onCreateCampaign: (name: string, maxGc: number, rules: AdvancePurchaseRules, tradingRules: TradingRules) => Promise<boolean>;
   onJoinCampaign: (code: string) => Promise<boolean>;
   username: string;
   onLogout: () => void;
@@ -117,8 +117,8 @@ export function RosterSidebar({
       <CorrectionLauncher />
       <div className="sidebar-footer sidebar-user"><span>{username}</span><button type="button" onClick={onLogout}>Log out</button></div>
       <div className="sidebar-footer"><span className="status-dot" /> Postgres <span className="save-status">{saved ? "Saved" : "Saving"}</span></div>
-      {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules) => {
-        const created = await onCreateCampaign(name, maxGc, rules);
+      {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules, tradingRules) => {
+        const created = await onCreateCampaign(name, maxGc, rules, tradingRules);
         if (created) setOpen(false);
         return created;
       }} />}

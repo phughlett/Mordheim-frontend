@@ -1,11 +1,13 @@
 import { Fragment, useState } from "react";
 import { statLabels, type StatLabel, type Member, type MemberRole, type WarriorTypeOption } from "../types";
 import { getMaximumExperience } from "../experience-rules";
+import { LeaderBadge } from "./leader-badge";
 
 interface MemberTableProps {
   activeDetails?: React.ReactNode;
   members: Member[];
   activeMemberId: string | null;
+  leaderId?: string | null;
   warriorTypes: WarriorTypeOption[];
   memberOrderCustomized: boolean;
   onReorderMembers: (memberIds: string[]) => void;
@@ -84,6 +86,7 @@ function statTone(member: Member, label: StatLabel) {
 export function MemberTable({
   members,
   activeMemberId,
+  leaderId,
   warriorTypes,
   memberOrderCustomized,
   onReorderMembers,
@@ -176,6 +179,7 @@ export function MemberTable({
                   </span>
                   <span>
                     <strong>{member.name || "Unnamed warrior"}</strong>
+                    {member.role === "Hero" && member.id === leaderId && <LeaderBadge />}
                     <small>{member.role}{member.role === "Henchman" ? ` group · ${member.groupSize}` : ""}</small>
                   </span>
                 </button>

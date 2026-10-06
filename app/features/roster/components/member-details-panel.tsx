@@ -6,11 +6,16 @@ import { EquipmentInventoryPanel } from "./equipment-inventory-panel";
 import { SkillsPanel } from "./skills-panel";
 import { SpellPanel } from "./spell-panel";
 import { LadsGotTalentPanel } from "./lads-got-talent-panel";
-import type { PurchaseAdvanceInput } from "../types";
+import type { InventoryEntry, PurchaseAdvanceInput } from "../types";
+import { LeaderBadge } from "./leader-badge";
 
 interface MemberDetailsPanelProps {
   member: Member;
   freebuild?: boolean;
+  equipmentPurchaseLocked?: boolean;
+  stashReturns: InventoryEntry[];
+  canReturnToStash: boolean;
+  onReturnToStash: (memberId: string, inventoryId: string, quantity: number, modelIndex: number) => Promise<void>;
   allowedActions?: string[];
   canAddGroupModel: boolean;
   onResizeGroup: (memberId: string, groupSize: number) => Promise<void>;
@@ -60,6 +65,10 @@ interface MemberDetailsPanelProps {
 export function MemberDetailsPanel({
   member,
   freebuild = false,
+  equipmentPurchaseLocked = false,
+  stashReturns,
+  canReturnToStash,
+  onReturnToStash,
   allowedActions,
   canAddGroupModel,
   onResizeGroup,
@@ -124,7 +133,7 @@ export function MemberDetailsPanel({
   return (
     <aside className="details-panel">
       <div className="details-heading">
-        <h3>Details</h3>
+        <h3>Details {member.role === "Hero" && capacity?.leader?.id === member.id && <LeaderBadge />}</h3>
         <button className="close-details" onClick={onClose} aria-label="Close details" type="button">×</button>
       </div>
       <div className="details-identity">
@@ -222,6 +231,10 @@ export function MemberDetailsPanel({
         data={equipmentData}
         loading={equipmentLoading}
         error={equipmentError}
+        purchaseLocked={equipmentPurchaseLocked}
+        stashReturns={stashReturns}
+        canReturnToStash={canReturnToStash}
+        onReturnToStash={(inventoryId, quantity, modelIndex) => onReturnToStash(member.id, inventoryId, quantity, modelIndex)}
         onPurchase={(optionId, modelIndex, quantity) => onPurchaseEquipment(member.id, optionId, modelIndex, quantity)}
         onSell={(inventoryItemIds) => onSellEquipment(member.id, inventoryItemIds)}
         onSetMutations={(mutationIds) => onSetMutations(member.id, mutationIds)}
@@ -246,6 +259,7 @@ export function MemberDetailsPanel({
       {(spellsData?.canShowSpellSection || spellsError) && (
         <SpellPanel
           key={`spells-${member.id}`}
+          allowTomeRecording={freebuild}
           data={spellsData}
           pendingAdvanceId={advancementsData?.pendingSkillAdvances[0]?.id ?? null}
           loading={spellsLoading}

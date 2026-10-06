@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { statLabels, type EquipmentSpecialRule, type EquipmentStats, type Member, type Roster, type WarriorEquipmentData, type WarriorSkillsData, type WarriorSpellsData } from "../types";
+import { statLabels, type EquipmentSpecialRule, type EquipmentStats, type InventoryEntry, type Member, type Roster, type TradingData, type WarriorEquipmentData, type WarriorSkillsData, type WarriorSpellsData } from "../types";
+import type { WarriorAdvancementsData } from "../types";
+import { PrintExperienceTrack } from "./experience/print-experience-track";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -9,25 +11,28 @@ interface MemberSheet {
   equipment: WarriorEquipmentData | null;
   skills: WarriorSkillsData | null;
   spells: WarriorSpellsData | null;
+  advancements: WarriorAdvancementsData;
 }
 
 interface PrintData {
   roster: Roster;
   sheets: MemberSheet[];
+  stash: InventoryEntry[];
   printedAt: string;
 }
 
 const roleOrder: Record<Member["role"], number> = { Hero: 0, "Hired Sword": 1, Henchman: 2 };
 
 async function loadMemberSheet(member: Member, request: Request): Promise<MemberSheet> {
-  const [equipment, skills, spells] = await Promise.all([
+  const [equipment, skills, spells, advancements] = await Promise.all([
     request<WarriorEquipmentData>(`/members/${member.id}/equipment`),
     request<WarriorSkillsData>(`/members/${member.id}/skills`),
     member.role === "Henchman"
       ? Promise.resolve(null)
       : request<WarriorSpellsData>(`/members/${member.id}/spells`).catch(() => null),
+    request<WarriorAdvancementsData>(`/members/${member.id}/advances`),
   ]);
-  return { member, equipment, skills, spells };
+  return { member, equipment, skills, spells, advancements };
 }
 
 export function RosterPrintExport({ roster, request, onError }: { roster: Roster; request: Request; onError: (message: string) => void }) {
@@ -54,9 +59,12 @@ export function RosterPrintExport({ roster, request, onError }: { roster: Roster
   async function exportRoster() {
     setPreparing(true);
     try {
-      const sheets = await Promise.all(roster.members.map((member) => loadMemberSheet(member, request)));
+      const [sheets, trading] = await Promise.all([
+        Promise.all(roster.members.map((member) => loadMemberSheet(member, request))),
+        request<TradingData>(`/rosters/${roster.id}/trading`),
+      ]);
       sheets.sort((first, second) => roleOrder[first.member.role] - roleOrder[second.member.role] || first.member.position - second.member.position);
-      setPrintData({ roster, sheets, printedAt: new Date().toLocaleDateString() });
+      setPrintData({ roster, sheets, stash: trading.stash, printedAt: new Date().toLocaleDateString() });
     } catch (requestError) {
       onError(requestError instanceof Error ? `Could not prepare PDF export: ${requestError.message}` : "Could not prepare PDF export.");
     } finally {
@@ -96,13 +104,14 @@ function weaponSummary(stats: EquipmentStats | null) {
   return parts.join(" · ");
 }
 
-function equipmentStacks(sheet: MemberSheet) {
-  const stacks = new Map<string, { name: string; quantity: number; models: Set<number>; stats: EquipmentStats | null }>();
+export function equipmentStacks(sheet: MemberSheet) {
+  const stacks = new Map<string, { key: string; name: string; quantity: number; models: Set<number>; stats: EquipmentStats | null }>();
   for (const item of sheet.equipment?.inventory ?? []) {
-    const stack = stacks.get(item.equipmentOptionId) ?? { name: item.name, quantity: 0, models: new Set<number>(), stats: item.stats };
+    const key = item.shopItemId ? `shop:${item.shopItemId}` : `legacy:${item.equipmentOptionId}`;
+    const stack = stacks.get(key) ?? { key, name: item.name, quantity: 0, models: new Set<number>(), stats: item.stats };
     stack.quantity += item.quantity;
     stack.models.add(item.modelIndex + 1);
-    stacks.set(item.equipmentOptionId, stack);
+    stacks.set(key, stack);
   }
   return [...stacks.values()];
 }
@@ -127,8 +136,9 @@ function collectReferences(sheets: MemberSheet[]) {
   return { equipment: byName(equipment.values()), specialRules: byName(specialRules.values()), skills: byName(skills.values()) };
 }
 
-function RosterPrintSheet({ data }: { data: PrintData }) {
+export function RosterPrintSheet({ data }: { data: PrintData }) {
   const { roster, sheets } = data;
+  const stash = data.stash ?? [];
   const references = collectReferences(sheets);
   const capacity = roster.capacity;
   return (
@@ -151,6 +161,14 @@ function RosterPrintSheet({ data }: { data: PrintData }) {
       </header>
 
       {sheets.length === 0 && <p>This warband has no members.</p>}
+
+      {stash.length > 0 && <section className="print-stash">
+        <h2>Warband stash</h2>
+        <ul>{stash.map((entry) => <li key={entry.id}>
+          <strong>{entry.name} ×{entry.quantity}</strong> · {entry.category} · {entry.unitCostPaid} GC each
+          {entry.description && <small> — {entry.description}</small>}
+        </li>)}</ul>
+      </section>}
 
       {sheets.map((sheet) => <MemberCard key={sheet.member.id} sheet={sheet} />)}
 
@@ -208,6 +226,7 @@ function MemberCard({ sheet }: { sheet: MemberSheet }) {
         <thead><tr>{statLabels.map((label) => <th key={label}>{label}</th>)}</tr></thead>
         <tbody><tr>{statLabels.map((label) => <td key={label}>{member.stats[label] || "-"}</td>)}</tr></tbody>
       </table>
+      <PrintExperienceTrack role={member.role} experience={member.experience} canGainExperience={sheet.advancements.canGainExperience} />
       <div className="print-member-body">
         <div>
           <h3>Equipment</h3>
@@ -216,7 +235,7 @@ function MemberCard({ sheet }: { sheet: MemberSheet }) {
               {stacks.map((stack) => {
                 const summary = weaponSummary(stack.stats);
                 const models = isGroup && stack.models.size < member.groupSize ? ` (model ${[...stack.models].sort((a, b) => a - b).join(", ")})` : "";
-                return <li key={stack.name}>{stack.name}{stack.quantity > 1 ? ` ×${stack.quantity}` : ""}{models}{summary && <small> — {summary}</small>}</li>;
+                return <li key={stack.key}>{stack.name}{stack.quantity > 1 ? ` ×${stack.quantity}` : ""}{models}{summary && <small> — {summary}</small>}</li>;
               })}
             </ul>
           ) : member.equipment ? <p>{member.equipment}</p> : <p className="print-empty">None</p>}

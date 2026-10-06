@@ -38,6 +38,7 @@ export function AdvancePurchasePanel({ data, treasury, onPurchase }: {
             </select></label>
             <button type="button" className="skills-learn-button" disabled={purchasing || !selected?.available || selected.cost > Number(treasury)} onClick={() => stat && void purchase({ stat })}>Buy stat{selected ? ` · ${selected.cost} GC` : ""}</button>
           </div>
+          {data.skillsEnabled ? <>
           <p className="advancement-rules">Purchased skills remaining: {data.skillAllowance} (one per purchased stat increase). Choose from this Hero's normal skill lists.</p>
           <div className="advancement-actions">
             <label className="skills-field"><span>PURCHASE SKILL</span><select value={skillId} disabled={purchasing || data.availableSkills.length === 0} onChange={(event) => setSkillId(event.target.value)}>
@@ -47,7 +48,8 @@ export function AdvancePurchasePanel({ data, treasury, onPurchase }: {
             <button type="button" className="skills-learn-button" disabled={purchasing || data.skillCost > Number(treasury) || !data.availableSkills.some((skill) => skill.id === skillId)} onClick={() => void purchase({ skillId })}>Buy skill · {data.skillCost} GC</button>
           </div>
           {data.availableSkills.find((skill) => skill.id === skillId)?.description && <p className="advancement-rules">{data.availableSkills.find((skill) => skill.id === skillId)?.description}</p>}
-          {((selected?.cost ?? 0) > Number(treasury) || (skillId && data.skillCost > Number(treasury))) && <p className="skills-error">Not enough GC for the selected purchase.</p>}
+          </> : <p className="advancement-rules">Skill purchases are disabled for this campaign. Characteristic purchases remain available.</p>}
+          {((selected?.cost ?? 0) > Number(treasury) || (data.skillsEnabled && skillId && data.skillCost > Number(treasury))) && <p className="skills-error">Not enough GC for the selected purchase.</p>}
         </>
       )}
     </section>

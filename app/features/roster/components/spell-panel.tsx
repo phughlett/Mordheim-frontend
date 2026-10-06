@@ -10,6 +10,7 @@ import type {
 } from "../types";
 
 interface SpellPanelProps {
+  allowTomeRecording?: boolean;
   data: WarriorSpellsData | null;
   pendingAdvanceId: string | null;
   loading: boolean;
@@ -36,6 +37,7 @@ function formatDifficulty(spell: KnownSpell, castingRollBonus: number) {
 }
 
 export function SpellPanel({
+  allowTomeRecording = true,
   data,
   pendingAdvanceId,
   loading,
@@ -314,15 +316,19 @@ export function SpellPanel({
           <div className="spell-tome">
             <span className="skills-panel-label">TOME OF MAGIC INVENTORY · {data.tomeInventory.length} owned</span>
             <small>
-              Record a Tome already acquired through the campaign market. Its listed cost is 200+D6×25 gc (Rare 12); recording it here does not purchase it.
+              {allowTomeRecording
+                ? "Record a Tome already acquired outside a campaign market. Its listed cost is 200+D6×25 GC (Rare 12); recording it here does not purchase it."
+                : "In campaigns, buy the Tome of Magic through Warband stash. Manual Tome recording is disabled here."}
             </small>
-            <label className="skills-field">
-              <span>GC PAID (OPTIONAL)</span>
-              <input type="number" min={0} max={1000000} step={1} value={tomeCostPaid} onChange={(event) => setTomeCostPaid(event.target.value)} />
-            </label>
-            <button className="skills-learn-button" type="button" disabled={busy} onClick={() => void recordTome()}>
-              Record acquired Tome
-            </button>
+            {allowTomeRecording && <>
+              <label className="skills-field">
+                <span>GC PAID (OPTIONAL)</span>
+                <input type="number" min={0} max={1000000} step={1} value={tomeCostPaid} onChange={(event) => setTomeCostPaid(event.target.value)} />
+              </label>
+              <button className="skills-learn-button" type="button" disabled={busy} onClick={() => void recordTome()}>
+                Record acquired Tome
+              </button>
+            </>}
             {data.lesserMagicUnlocked ? (
               <p className="spell-rule-note">Lesser Magic is unlocked. A Tome was consumed to learn the discipline.</p>
             ) : !data.hasArcaneLore ? (

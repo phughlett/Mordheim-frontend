@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test test/*.test.cjs",
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "vite preview --outDir build/client --host 0.0.0.0 --port 3000",
