@@ -28,7 +28,7 @@ const { PrintExperienceTrack } = require("../app/features/roster/components/expe
 const { equipmentStacks, RosterPrintSheet } = require("../app/features/roster/components/roster-print-export.tsx");
 const { isCustomShopItemValid, NewCampaignDialog } = require("../app/features/roster/components/new-campaign-dialog.tsx");
 const { AdvancePurchasePanel } = require("../app/features/roster/components/advance-purchase-panel.tsx");
-const { AssignedEquipment, StashItem, WarbandTradingPanel, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
+const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
 const { SpellPanel } = require("../app/features/roster/components/spell-panel.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
@@ -42,6 +42,20 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+
+test("combat spoils are Freebuild-only and do not require a price quote", () => {
+  const props = { campaign: false, item: { id: "herbs", priceDice: 2, disabled: false }, enabled: true, onAdd: async () => {} };
+  const html = render(CombatSpoils, props);
+  assert.match(html, /Add as combat spoils/);
+  assert.match(html, /no Gold Crowns charged/);
+  assert.match(html, /Combat spoils quantity/);
+  assert.doesNotMatch(html, /disabled=""/);
+  assert.equal(render(CombatSpoils, { ...props, campaign: true }), "");
+  for (const overrides of [{ enabled: false }, { item: { ...props.item, disabled: true } }]) {
+    const locked = render(CombatSpoils, { ...props, ...overrides });
+    assert.equal((locked.match(/disabled=""/g) || []).length, 2);
+  }
+});
 
 test("assigned equipment totals items and lists each carrier once without model numbers", () => {
   const entries = [

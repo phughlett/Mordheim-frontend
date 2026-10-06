@@ -89,6 +89,22 @@ export function AssignedEquipment({ entries, members }: {
   ) : <p className="equipment-state">No assigned inventory entries.</p>;
 }
 
+export function CombatSpoils({ campaign, item, enabled, onAdd }: {
+  campaign: boolean;
+  item: ShopItem;
+  enabled: boolean;
+  onAdd: (quantity: number) => Promise<void>;
+}) {
+  const [quantity, setQuantity] = useState(1);
+  if (campaign) return null;
+  return <div className="trading-quote">
+    <strong>Combat spoils · no Gold Crowns charged</strong>
+    <label className="equipment-field"><span>SPOILS QUANTITY</span><input aria-label="Combat spoils quantity" type="number" min={1} max={1000} step={1} value={quantity} disabled={!enabled || item.disabled} onChange={(event) => setQuantity(Math.min(1000, Math.max(1, Math.floor(Number(event.target.value) || 1))))} /></label>
+    <button className="outline-button" type="button" disabled={!enabled || item.disabled} onClick={() => void onAdd(quantity)}>Add as combat spoils</button>
+    <small>Add the selected shop item to your stash for free. No rarity search or price roll required; equipment restrictions still apply.</small>
+  </div>;
+}
+
 export function StashItem({ entry, roster, enabled, onSend }: {
   entry: InventoryEntry;
   roster: Roster;
@@ -295,6 +311,17 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
     });
   }
 
+  async function addSpoils(spoilsQuantity: number) {
+    if (!item) return;
+    await act(async () => {
+      const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/spoils`, "POST", {
+        itemId: item.id, quantity: spoilsQuantity,
+      });
+      if (rosterIdRef.current === roster.id) setData(refreshed);
+      await onChanged();
+    });
+  }
+
   async function transfer(entryId: string, memberId: string, quantity: number, modelIndex: number) {
     await act(async () => {
       const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/transfer`, "POST", {
@@ -407,6 +434,7 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
                 <button className="primary-button" type="button" disabled={!actionsEnabled || !data.canPurchase || item.disabled || (quote?.price ?? item.baseCost) * quantity > Number(roster.treasury) || (campaign && itemMayBeRare && (!selectedSearch || quantity !== 1))} onClick={() => void purchase()}>Buy into stash</button>
               </div>}
               {!data.canPurchase && <p className="trading-note">Purchasing is not available at this campaign stage.</p>}
+              {item && <CombatSpoils key={item.id} campaign={campaign} item={item} enabled={actionsEnabled} onAdd={addSpoils} />}
             </>}
           </div>
           <div className="trading-block">
