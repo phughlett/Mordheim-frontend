@@ -109,7 +109,8 @@ function weaponSummary(stats: EquipmentStats | null) {
 export function equipmentStacks(sheet: MemberSheet) {
   const stacks = new Map<string, { key: string; name: string; quantity: number; models: Set<number>; stats: EquipmentStats | null }>();
   for (const item of sheet.equipment?.inventory ?? []) {
-    const key = item.shopItemId ? `shop:${item.shopItemId}` : `legacy:${item.equipmentOptionId}`;
+    const origin = item.shopItemId ? `shop:${item.shopItemId}` : `legacy:${item.equipmentOptionId}`;
+    const key = item.shopItemId === "mordheim-map" ? `${origin}:${item.mapResult?.type ?? "unresolved"}` : origin;
     const stack = stacks.get(key) ?? { key, name: item.name, quantity: 0, models: new Set<number>(), stats: item.stats };
     stack.quantity += item.quantity;
     stack.models.add(item.modelIndex + 1);

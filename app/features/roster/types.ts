@@ -155,6 +155,15 @@ export interface AdvancePurchaseRules {
 
 export type ShopCategory = "weapon" | "armour" | "shield" | "misc";
 
+export interface MordheimMapType {
+  id: string;
+  name: string;
+  rolls: number[];
+  effect: string;
+}
+
+export type MapSelection = { mode: "choose"; type: string } | { mode: "manual" | "simulated"; dice?: number[] };
+
 export interface ShopItem {
   id: string;
   name: string;
@@ -185,6 +194,7 @@ export interface ShopItem {
   allowedRoles?: string[];
   purchaseAction?: "ritual" | "permanent-upgrade";
   priceOverrides?: { typeNames: string[]; baseCost: number; priceDice: number; priceMultiplier: number }[];
+  mapTypes?: MordheimMapType[];
 }
 
 export interface TradingRules {
@@ -217,6 +227,7 @@ export interface InventoryEntry {
   upgradeQuantity?: number;
   unitSaleValue?: number | null;
   saleRestriction?: string | null;
+  mapResult?: { type: string; mode: "choose" | "manual" | "simulated"; roll: number | null };
 }
 
 export interface TradingSearch {
@@ -384,6 +395,7 @@ export interface WarriorInventoryItem {
   description?: string;
   unitSaleValue?: number | null;
   saleRestriction?: string | null;
+  mapResult?: InventoryEntry["mapResult"];
 }
 
 export interface WarriorEquipmentData {

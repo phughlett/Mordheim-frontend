@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { InventoryEntry, Member, Roster, ShopItem, TradingData, TradingHero, TradingQuote, TradingSearch } from "../types";
 import { WarbandCurrency } from "./roster-fields";
+import { defaultMapInput, mapSelection, MapResult, MordheimMapControls, UnresolvedMap, type MapInput } from "./mordheim-map-controls";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -124,10 +125,10 @@ export function AssignedEquipment({ entries, members }: {
   entries: InventoryEntry[];
   members: Roster["members"];
 }) {
-  const groups = new Map<string, { name: string; category: InventoryEntry["category"]; quantity: number; memberIds: Set<string> }>();
+  const groups = new Map<string, { name: string; category: InventoryEntry["category"]; quantity: number; memberIds: Set<string>; mapEntry?: InventoryEntry }>();
   for (const entry of entries) {
     const key = JSON.stringify([entry.name, entry.category]);
-    const group = groups.get(key) ?? { name: entry.name, category: entry.category, quantity: 0, memberIds: new Set<string>() };
+    const group = groups.get(key) ?? { name: entry.name, category: entry.category, quantity: 0, memberIds: new Set<string>(), mapEntry: entry.shopItemId === "mordheim-map" ? entry : undefined };
     group.quantity += entry.quantity;
     if (entry.memberId) group.memberIds.add(entry.memberId);
     groups.set(key, group);
@@ -142,6 +143,7 @@ export function AssignedEquipment({ entries, members }: {
         <li key={key}>
           <strong>{group.name} x {group.quantity} - {categoryLabels[group.category]}</strong>
           <span>{[...group.memberIds].map((id) => members.find((member) => member.id === id)?.name || "Unnamed warrior").join(", ")}</span>
+          {group.mapEntry && <small>{group.mapEntry.description}</small>}
         </li>
       ))}
     </ul>
@@ -164,13 +166,14 @@ export function CombatSpoils({ campaign, item, enabled, onAdd }: {
   </div>;
 }
 
-export function StashItem({ entry, roster, enabled, onSend, canSell = false, onSell }: {
+export function StashItem({ entry, roster, enabled, onSend, canSell = false, onSell, mapControls }: {
   entry: InventoryEntry;
   roster: Roster;
   enabled: boolean;
   onSend: (entryId: string, memberId: string, quantity: number, modelIndex: number) => Promise<void>;
   canSell?: boolean;
   onSell?: (entryId: string, quantity: number) => Promise<void>;
+  mapControls?: React.ReactNode;
 }) {
   const [memberId, setMemberId] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -185,6 +188,8 @@ export function StashItem({ entry, roster, enabled, onSend, canSell = false, onS
     <strong>{entry.name} × {entry.quantity}</strong>
     <span>{entry.category} · {entry.unitCostPaid} GC each</span>
     {entry.description && <small>{entry.description}</small>}
+    <MapResult entry={entry} />
+    {mapControls}
     {entry.boundWarriorId && <small>Bound to {roster.members.find((member) => member.id === entry.boundWarriorId)?.name ?? "its summoner"}; lost if they die.</small>}
     <div className="trading-inline">
       <label className="equipment-field"><span>SEND TO</span><select aria-label={`Recipient for ${entry.name}`} value={memberId} disabled={!enabled || !recipients.length} onChange={(event) => {
@@ -236,6 +241,7 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
   const [quote, setQuote] = useState<TradingQuote | null>(null);
   const [quotesByItem, setQuotesByItem] = useState<Record<string, TradingQuote>>({});
   const [quantity, setQuantity] = useState(1);
+  const [mapInput, setMapInput] = useState<MapInput>(defaultMapInput);
   const [searchHeroId, setSearchHeroId] = useState("");
   const [searchMode, setSearchMode] = useState<"manual" | "simulated">("simulated");
   const [searchDice, setSearchDice] = useState("1, 1");
@@ -375,11 +381,12 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
       return;
     }
     await act(async () => {
+      const selection = item.id === "mordheim-map" ? mapSelection(mapInput, quantity) : undefined;
       const offer = quote ?? await request<TradingQuote>(`/rosters/${roster.id}/trading/quote`, "POST", {
         itemId: item.id, mode: "simulated", ...(buyerId ? { buyerId } : {}),
       });
       const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/purchase`, "POST", {
-        quoteId: offer.id, quantity, ...(selectedSearch ? { searchId: selectedSearch.id } : {}),
+        quoteId: offer.id, quantity, mapSelection: selection, ...(selectedSearch ? { searchId: selectedSearch.id } : {}),
       });
       if (rosterIdRef.current === roster.id) {
         setQuote(null);
@@ -440,6 +447,17 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
     await act(async () => {
       const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/spoils`, "POST", {
         itemId: item.id, quantity: spoilsQuantity,
+        ...(item.id === "mordheim-map" ? { mapSelection: mapSelection(mapInput, spoilsQuantity) } : {}),
+      });
+      if (rosterIdRef.current === roster.id) setData(refreshed);
+      await onChanged();
+    });
+  }
+
+  async function resolveMap(entry: InventoryEntry, source: "stash" | "member", input: MapInput) {
+    await act(async () => {
+      const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/map`, "POST", {
+        source, inventoryId: entry.id, mapSelection: mapSelection(input, 1),
       });
       if (rosterIdRef.current === roster.id) setData(refreshed);
       await onChanged();
@@ -587,6 +605,7 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
                 {searchResult && <p className="trading-result" role="status">{searchResult.heroName}: rolled {diceLabel(searchResult.dice)}{searchResult.modifier ? ` ${searchResult.modifier > 0 ? "+" : ""}${searchResult.modifier}` : ""} = {searchResult.total} · {searchResult.success ? "success" : "no item found"}</p>}
                 {selectedSearch && <p className="trading-result">Successful search by {selectedSearch.heroName}; this item may be purchased once.</p>}
               </>}
+              {item?.mapTypes && <MordheimMapControls types={item.mapTypes} value={mapInput} enabled={actionsEnabled && !item.disabled && Boolean(purchasable)} onChange={setMapInput} />}
               {item && item.purchaseAction !== "ritual" && item.priceDice > 0 && <div className="trading-inline">
                 <label className="equipment-field"><span>PRICE ROLL</span><select value={mode} disabled={!actionsEnabled || Boolean(quote)} onChange={(event) => setMode(event.target.value as "manual" | "simulated")}><option value="simulated">Simulated</option><option value="manual">Manual</option></select></label>
                 {mode === "manual" && item.priceDice > 0 && <label className="equipment-field"><span>{item.priceDice} D6 (comma separated)</span><input aria-label="Manual price dice" value={manualDice} disabled={!actionsEnabled} placeholder={Array.from({ length: item.priceDice }, () => "1").join(",")} onChange={(event) => setManualDice(event.target.value)} /></label>}
@@ -606,7 +625,9 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
           </div>
           <div className="trading-block">
             <h3>Stash · {data.stash.length} stack{data.stash.length === 1 ? "" : "s"}</h3>
-            {data.stash.length ? <ul className="trading-inventory">{data.stash.map((entry) => <StashItem key={entry.id} entry={entry} roster={roster} enabled={actionsEnabled && data.canTransfer} onSend={transfer} canSell={actionsEnabled && data.canSell} onSell={sellStash} />)}</ul> : <p className="equipment-state">The stash is empty.</p>}
+            {data.stash.length ? <ul className="trading-inventory">{data.stash.map((entry) => <StashItem key={entry.id} entry={entry} roster={roster} enabled={actionsEnabled && data.canTransfer} onSend={transfer} canSell={actionsEnabled && data.canSell} onSell={sellStash}
+              mapControls={<UnresolvedMap entry={entry} types={data.shop.find((item) => item.id === "mordheim-map")?.mapTypes ?? []} enabled={actionsEnabled && (data.canTransfer || data.canPurchase)} onResolve={(input) => resolveMap(entry, "stash", input)} />}
+            />)}</ul> : <p className="equipment-state">The stash is empty.</p>}
             {data.canSell && <p className="trading-note">Sales pay half the listed base price, rounded down per item. Variable-price dice and amounts paid are not refunded.</p>}
             {!data.canTransfer && <p className="trading-note">Transfers are not available at this campaign stage.</p>}
           </div>
@@ -615,6 +636,11 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
         <div className="trading-block">
           <h3>Assigned equipment</h3>
           <AssignedEquipment entries={data.memberInventory} members={roster.members} />
+          {data.memberInventory.filter((entry) => entry.shopItemId === "mordheim-map").map((entry) => <div key={entry.id}>
+            <strong>{entry.name} · {roster.members.find((member) => member.id === entry.memberId)?.name}</strong>
+            <MapResult entry={entry} />
+            <UnresolvedMap entry={entry} types={data.shop.find((item) => item.id === "mordheim-map")?.mapTypes ?? []} enabled={actionsEnabled && (data.canTransfer || data.canPurchase)} onResolve={(input) => resolveMap(entry, "member", input)} />
+          </div>)}
         </div>
 
         {campaign && <div className="trading-block">

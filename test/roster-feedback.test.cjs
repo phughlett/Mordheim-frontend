@@ -30,6 +30,7 @@ const { isCustomShopItemValid, NewCampaignDialog } = require("../app/features/ro
 const { AdvancePurchasePanel } = require("../app/features/roster/components/advance-purchase-panel.tsx");
 const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, RitualPurchase, WeaponUpgrade, filterShopItems, shopItemPriceForType, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
+const { MordheimMapControls, MapResult, UnresolvedMap, mapSelection } = require("../app/features/roster/components/mordheim-map-controls.tsx");
 const { SpellPanel } = require("../app/features/roster/components/spell-panel.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
 const { SkillsPanel } = require("../app/features/roster/components/skills-panel.tsx");
@@ -44,6 +45,44 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+
+test("Mordheim maps offer manual choice, entered dice and simulated dice with the complete rules table", () => {
+  const mapTypes = [
+    { id: "fake", name: "Fake", rolls: [1], effect: "Opponent chooses the next scenario." },
+    { id: "vague", name: "Vague", rolls: [2, 3], effect: "Reroll one exploration die." },
+    { id: "catacomb", name: "Catacomb map", rolls: [4], effect: "Choose the next scenario." },
+    { id: "accurate", name: "Accurate", rolls: [5], effect: "Reroll up to three exploration dice." },
+    { id: "master", name: "Master map", rolls: [6], effect: "Reroll one exploration die if the bearer was not out of action." },
+  ];
+  const props = { types: mapTypes, enabled: true, onChange: () => {}, value: { mode: "choose", type: "master", dice: "" } };
+  const html = render(MordheimMapControls, props);
+  for (const type of mapTypes) assert.ok(html.includes(type.name));
+  assert.match(html, /Roll D6 automatically/);
+  assert.match(html, /Enter rolled D6/);
+  assert.match(html, /Choose type manually/);
+  assert.match(html, /separate from price and rarity rolls/);
+  assert.match(html, /not automatically/);
+  assert.match(render(MordheimMapControls, { ...props, value: { ...props.value, mode: "manual" } }), /aria-label="Map type dice"/);
+  assert.match(render(MordheimMapControls, { ...props, enabled: false }), /aria-label="Map type mode"[^>]*disabled/);
+  assert.deepEqual(mapSelection(props.value, 2), { mode: "choose", type: "master" });
+  assert.deepEqual(mapSelection({ ...props.value, mode: "manual", dice: "2, 6" }, 2), { mode: "manual", dice: [2, 6] });
+  assert.deepEqual(mapSelection({ ...props.value, mode: "simulated" }, 2), { mode: "simulated" });
+  for (const dice of ["", "0", "7", "1.5", "1,", "six"]) assert.throws(() => mapSelection({ ...props.value, mode: "manual", dice }, 1));
+  assert.match(render(MapResult, { entry: { mapResult: { roll: 6, mode: "manual" } } }), /Map D6: 6 \(entered\)/);
+  assert.match(render(MapResult, { entry: { mapResult: { roll: null, mode: "choose" } } }), /Type chosen manually/);
+  assert.equal(render(UnresolvedMap, { entry: { shopItemId: "mordheim-map", mapResult: { type: "master" } }, types: mapTypes }), "");
+  assert.match(render(UnresolvedMap, { entry: { shopItemId: "mordheim-map" }, types: mapTypes, enabled: true }), /Record type for one map/);
+});
+
+test("printed carried maps retain distinct types rather than merging under the shop ID", () => {
+  const inventory = ["vague", "master", "master"].map((type, index) => ({
+    id: String(index), shopItemId: "mordheim-map", name: `Mordheim Map (${type})`, quantity: 1, modelIndex: 0,
+    mapResult: { type }, stats: null,
+  }));
+  const stacks = equipmentStacks({ equipment: { inventory } });
+  assert.equal(stacks.length, 2);
+  assert.deepEqual(stacks.map((stack) => [stack.name, stack.quantity]), [["Mordheim Map (vague)", 1], ["Mordheim Map (master)", 2]]);
+});
 
 test("warband source summaries distinguish references from automation and display grades", () => {
   assert.equal(gradeLabel("core"), "Core");
