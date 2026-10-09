@@ -90,11 +90,11 @@ export function NewCampaignDialog({ error, onCancel, onSubmit }: {
         });
         if (response.status === 401) window.dispatchEvent(new Event("mordheim:signed-out"));
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || `Could not load the shop (${response.status}).`);
-        if (!Array.isArray(result.items)) throw new Error("The shop response did not include an item list.");
+        if (!response.ok) throw new Error(result.error || `Could not load the Trading Post (${response.status}).`);
+        if (!Array.isArray(result.items)) throw new Error("The Trading Post response did not include an item list.");
         if (!controller.signal.aborted) setShop(result.items as ShopItem[]);
       } catch (requestError) {
-        if (!controller.signal.aborted) setShopError(requestError instanceof Error ? requestError.message : "Could not load the shop.");
+        if (!controller.signal.aborted) setShopError(requestError instanceof Error ? requestError.message : "Could not load the Trading Post.");
       } finally {
         if (!controller.signal.aborted) setShopLoading(false);
       }
@@ -178,8 +178,8 @@ export function NewCampaignDialog({ error, onCancel, onSubmit }: {
           </>}
           <section className="campaign-trading-rules" aria-label="Campaign trading rules">
             <h3>Trading rules</h3>
-            <p className="heading-note">Shop items are loaded from the canonical shop. Variable price is base cost + Nd6 × multiplier.</p>
-            {shopLoading ? <p className="equipment-state">Loading shop items...</p> : shopError ? (
+            <p className="heading-note">Items are loaded from the Trading Post catalog. Variable price is base cost + Nd6 × multiplier.</p>
+            {shopLoading ? <p className="equipment-state">Loading Trading Post items...</p> : shopError ? (
               <div className="equipment-error" role="alert">{shopError}<button className="outline-button" type="button" onClick={() => setShopAttempt((attempt) => attempt + 1)}>Retry</button></div>
             ) : (
               <div className="campaign-shop-list">

@@ -56,7 +56,6 @@ interface MemberDetailsPanelProps {
   onForgetSpell: (warriorSpellId: string) => Promise<boolean>;
   onReduceSpellDifficulty: (warriorSpellId: string, advanceId: string) => Promise<boolean>;
   onSetSpellDiscipline: (disciplineId: string) => Promise<boolean>;
-  onRecordMagicTome: (unitCostPaid: number | null) => Promise<boolean>;
   onConsumeMagicTome: () => Promise<boolean>;
   onSetLadsGotTalentChoices: (memberId: string, choices: SkillCategoryChoice[]) => Promise<void>;
   onPromote: (memberId: string) => void;
@@ -109,7 +108,6 @@ export function MemberDetailsPanel({
   onForgetSpell,
   onReduceSpellDifficulty,
   onSetSpellDiscipline,
-  onRecordMagicTome,
   onConsumeMagicTome,
   onSetLadsGotTalentChoices,
   onPromote,
@@ -261,7 +259,6 @@ export function MemberDetailsPanel({
       {(spellsData?.canShowSpellSection || spellsError) && (
         <SpellPanel
           key={`spells-${member.id}`}
-          allowTomeRecording={freebuild && !equipmentPurchaseLocked}
           data={spellsData}
           pendingAdvanceId={advancementsData?.pendingSkillAdvances[0]?.id ?? null}
           loading={spellsLoading}
@@ -271,7 +268,6 @@ export function MemberDetailsPanel({
           onForget={onForgetSpell}
           onReduceDifficulty={onReduceSpellDifficulty}
           onSetDiscipline={onSetSpellDiscipline}
-          onRecordTome={onRecordMagicTome}
           onConsumeTome={onConsumeMagicTome}
         />
       )}

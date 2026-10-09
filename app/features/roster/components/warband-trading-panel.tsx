@@ -516,8 +516,8 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
         <div><div className="eyebrow">MARKET &amp; INVENTORY</div><h2>Warband stash</h2></div>
         <WarbandCurrency roster={roster} onUpdate={onUpdateRoster} readOnly={readOnly} />
       </div>
-      {readOnly && <p className="trading-note">Read-only view: stash, equipment and shop listings can be inspected, but trading actions are disabled.</p>}
-      {loading && <p className="equipment-state">Loading stash and shop...</p>}
+      {readOnly && <p className="trading-note">Read-only view: stash, equipment and Trading Post listings can be inspected, but trading actions are disabled.</p>}
+      {loading && <p className="equipment-state">Loading stash and Trading Post...</p>}
       {error && <p className="equipment-error" role="alert">{error}</p>}
       {!loading && !data && <button className="outline-button" type="button" disabled={busy} onClick={() => {
         setLoading(true);
@@ -529,20 +529,20 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
       {data && <>
         <div className="trading-columns">
           <div className="trading-block">
-            <h3>Mordheim shop</h3>
-            {creation ? <p className="trading-note" role="note">0 battles fought: use the warband-specific equipment shop in each warrior's details. The Mordheim shop opens after your first battle. Update Battles fought in Warband Information after playing.</p> : <>
+            <h3>Trading Post</h3>
+            {creation ? <p className="trading-note" role="note">0 battles fought: use the warband-specific equipment shop in each warrior's details. The Trading Post opens after your first battle. Update Battles fought in Warband Information after playing.</p> : <>
             {!campaign && <p className="trading-note">After the first battle, buy here into the stash, then transfer equipment to eligible warriors.</p>}
             <div className="trading-inline">
-              <label className="equipment-field"><span>CATEGORY</span><select aria-label="Shop category" value={shopCategory} onChange={(event) => setShopCategory(event.target.value)}>
+              <label className="equipment-field"><span>CATEGORY</span><select aria-label="Trading Post category" value={shopCategory} onChange={(event) => setShopCategory(event.target.value)}>
                 <option value="">All categories</option><option value="close-combat">Close combat</option><option value="missile">Missile</option><option value="blackpowder">Blackpowder</option><option value="armour">Armour</option><option value="miscellaneous">Miscellaneous</option><option value="animals">Animal bestiary</option>
               </select></label>
-              <label className="equipment-field"><span>GRADE</span><select aria-label="Shop grade" value={grade} onChange={(event) => setGrade(event.target.value)}>
+              <label className="equipment-field"><span>GRADE</span><select aria-label="Trading Post grade" value={grade} onChange={(event) => setGrade(event.target.value)}>
                 <option value="">Core, 1a and 1b</option><option value="core">Core</option><option value="1a">1a</option><option value="1b">1b</option>
               </select></label>
             </div>
-            {filteredShop?.length === 0 && <p className="equipment-state">No shop items match these filters.</p>}
-            {!data.shop.length ? <p className="equipment-state">No shop items are available.</p> : <>
-              <label className="equipment-field"><span>SHOP ITEM</span><select aria-label="Shop item" value={itemId} onChange={(event) => {
+            {filteredShop?.length === 0 && <p className="equipment-state">No Trading Post items match these filters.</p>}
+            {!data.shop.length ? <p className="equipment-state">No Trading Post items are available.</p> : <>
+              <label className="equipment-field"><span>TRADING POST ITEM</span><select aria-label="Trading Post item" value={itemId} onChange={(event) => {
                 const nextItemId = event.target.value;
                 setItemId(nextItemId);
                 setBuyerId("");
@@ -576,7 +576,7 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
                 </small>}
                 {item.disabled && <small className="trading-unavailable">Unavailable in this market.</small>}
               </div>}
-              {item && (item.priceOverrides?.length ?? 0) > 0 && <label className="equipment-field"><span>BUYER / PRICE ELIGIBILITY</span><select aria-label="Shop buyer" value={buyerId} disabled={!actionsEnabled} onChange={(event) => {
+              {item && (item.priceOverrides?.length ?? 0) > 0 && <label className="equipment-field"><span>BUYER / PRICE ELIGIBILITY</span><select aria-label="Trading Post buyer" value={buyerId} disabled={!actionsEnabled} onChange={(event) => {
                 setBuyerId(event.target.value);
                 setQuote(quotesByItem[`${item.id}:${event.target.value}`] ?? null);
               }}>

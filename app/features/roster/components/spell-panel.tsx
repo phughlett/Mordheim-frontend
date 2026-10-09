@@ -10,7 +10,6 @@ import type {
 } from "../types";
 
 interface SpellPanelProps {
-  allowTomeRecording?: boolean;
   data: WarriorSpellsData | null;
   pendingAdvanceId: string | null;
   loading: boolean;
@@ -20,7 +19,6 @@ interface SpellPanelProps {
   onForget: (warriorSpellId: string) => Promise<boolean>;
   onReduceDifficulty: (warriorSpellId: string, advanceId: string) => Promise<boolean>;
   onSetDiscipline: (disciplineId: string) => Promise<boolean>;
-  onRecordTome: (unitCostPaid: number | null) => Promise<boolean>;
   onConsumeTome: () => Promise<boolean>;
 }
 
@@ -37,7 +35,6 @@ function formatDifficulty(spell: KnownSpell, castingRollBonus: number) {
 }
 
 export function SpellPanel({
-  allowTomeRecording = true,
   data,
   pendingAdvanceId,
   loading,
@@ -47,12 +44,10 @@ export function SpellPanel({
   onForget,
   onReduceDifficulty,
   onSetDiscipline,
-  onRecordTome,
   onConsumeTome,
 }: SpellPanelProps) {
   const [selectedDisciplineId, setSelectedDisciplineId] = useState("");
   const [selectedSpellId, setSelectedSpellId] = useState("");
-  const [tomeCostPaid, setTomeCostPaid] = useState("");
   const [acquisitionMethod, setAcquisitionMethod] = useState<SpellAcquisitionMethod>("advance");
   const [rolledResults, setRolledResults] = useState<SpellRollResponse["results"]>([]);
   const [customSpell, setCustomSpell] = useState<CustomSpellInput>({
@@ -151,15 +146,6 @@ export function SpellPanel({
       if (!await onSetDiscipline(disciplineId)) {
         setSelectedDisciplineId(data?.selectedSpellDisciplineId ?? "");
       }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function recordTome() {
-    setBusy(true);
-    try {
-      if (await onRecordTome(tomeCostPaid ? Number(tomeCostPaid) : null)) setTomeCostPaid("");
     } finally {
       setBusy(false);
     }
@@ -314,31 +300,20 @@ export function SpellPanel({
         )}
         {data?.hasAcademicSkillAccess && data.tomeAllowed && (
           <div className="spell-tome">
-            <span className="skills-panel-label">TOME OF MAGIC INVENTORY · {data.tomeInventory.length} owned</span>
+            <span className="skills-panel-label">TOME OF MAGIC INVENTORY · {data.tomeInventory.reduce((total, tome) => total + tome.quantity, 0)} owned</span>
             <small>
-              {allowTomeRecording
-                ? "Record a Tome already acquired outside a campaign market. Its listed cost is 200+D6×25 GC (Rare 12); recording it here does not purchase it."
-                : "In campaigns or after the first Freebuild battle, acquire the Tome of Magic through the Mordheim shop and Warband stash. Manual Tome recording is disabled here."}
+              Acquire a Tome of Magic through the Trading Post and transfer it from Warband stash to this Hero. Learning Lesser Magic requires Arcane Lore and consumes one carried Tome.
             </small>
-            {allowTomeRecording && <>
-              <label className="skills-field">
-                <span>GC PAID (OPTIONAL)</span>
-                <input type="number" min={0} max={1000000} step={1} value={tomeCostPaid} onChange={(event) => setTomeCostPaid(event.target.value)} />
-              </label>
-              <button className="skills-learn-button" type="button" disabled={busy} onClick={() => void recordTome()}>
-                Record acquired Tome
-              </button>
-            </>}
             {data.lesserMagicUnlocked ? (
               <p className="spell-rule-note">Lesser Magic is unlocked. A Tome was consumed to learn the discipline.</p>
             ) : !data.hasArcaneLore ? (
               <p className="spell-rule-note">Learn Arcane Lore from the Academic skill list, then use a Tome from this inventory to learn Lesser Magic.</p>
             ) : data.canLearnLesserMagic ? (
               <button className="skills-learn-button" type="button" disabled={busy} onClick={() => void consumeTome()}>
-                Use Tome to learn Lesser Magic · consume 1
+                Learn Lesser Magic · consume 1 Tome of Magic
               </button>
             ) : (
-              <p className="spell-rule-note">Add a Tome of Magic to this inventory to unlock Lesser Magic.</p>
+              <p className="spell-rule-note">Transfer a Tome of Magic from Warband stash to this Hero's inventory to learn Lesser Magic.</p>
             )}
           </div>
         )}

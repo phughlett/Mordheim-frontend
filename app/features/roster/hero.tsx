@@ -651,21 +651,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
-  async function recordMagicTome(memberId: string, unitCostPaid: number | null) {
-    setSpellsError("");
-    try {
-      setMemberSpells(await apiRequest<WarriorSpellsData>(`/members/${memberId}/spells/tomes`, "POST", { unitCostPaid }));
-      return true;
-    } catch (requestError) {
-      setSpellsError(requestError instanceof Error ? requestError.message : "Could not record the Tome of Magic.");
-      return false;
-    }
-  }
-
   async function consumeMagicTome(memberId: string) {
     setSpellsError("");
     try {
       setMemberSpells(await apiRequest<WarriorSpellsData>(`/members/${memberId}/spells/learn-lesser-magic`, "POST"));
+      await refreshAfterTrading();
       return true;
     } catch (requestError) {
       setSpellsError(requestError instanceof Error ? requestError.message : "Could not use this Tome to learn Lesser Magic.");
@@ -1118,7 +1108,6 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   onForgetSpell={(warriorSpellId) => forgetSpell(selectedMember.id, warriorSpellId)}
                   onReduceSpellDifficulty={(warriorSpellId, advanceId) => reduceSpellDifficulty(selectedMember.id, warriorSpellId, advanceId)}
                   onSetSpellDiscipline={(disciplineId) => setSpellDiscipline(selectedMember.id, disciplineId)}
-                  onRecordMagicTome={(unitCostPaid) => recordMagicTome(selectedMember.id, unitCostPaid)}
                   onConsumeMagicTome={() => consumeMagicTome(selectedMember.id)}
                   onSetLadsGotTalentChoices={setLadsGotTalentChoices}
                   onPromote={promoteMember}

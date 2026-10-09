@@ -551,6 +551,7 @@ export interface SpellRollResponse {
 
 export interface MagicTomeInventoryItem {
   id: string;
+  quantity: number;
   unitCostPaid: number | null;
   acquiredAt: string;
 }

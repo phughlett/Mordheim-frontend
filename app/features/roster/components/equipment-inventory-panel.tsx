@@ -173,7 +173,7 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         <span className="equipment-inventory-label">INVENTORY</span>
         <strong>Weapons &amp; armour</strong>
       </div>
-      {purchaseLocked && <p className="trading-note" role="note">Recruitment equipment shops are closed after the first battle in Freebuild, or after campaign setup. Buy through the Mordheim shop into Warband stash, then transfer items here.</p>}
+      {purchaseLocked && <p className="trading-note" role="note">Recruitment equipment shops are closed after the first battle in Freebuild, or after campaign setup. Buy through the Trading Post into Warband stash, then transfer items here.</p>}
       {loading ? <p className="equipment-state">Loading equipment...</p> : purchaseLocked ? null : availableOptions.length ? (
         <div className="equipment-purchase-form">
           <label className="equipment-field">

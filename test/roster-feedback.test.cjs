@@ -516,9 +516,37 @@ test("warband trading panel exposes its stash surface and marks read-only access
   });
   assert.match(html, /Warband stash/);
   assert.match(html, /Read-only view/);
-  assert.match(html, /Loading stash and shop/);
+  assert.match(html, /Loading stash and Trading Post/);
+  assert.match(html, /Trading Post listings/);
   assert.match(html, /Gold Crowns/);
   assert.match(html, /Wyrdstone/);
+});
+
+test("Trading Post naming is consistent before and after the first Freebuild battle", () => {
+  const originalUseState = React.useState;
+  const data = { shop: [], stash: [], memberInventory: [], heroes: [], searches: [],
+    canPurchase: true, canSearch: false, canTransfer: true, treasury: "100" };
+  try {
+    for (const battlesFought of [0, 1]) {
+      let stateIndex = 0;
+      React.useState = (initial) => originalUseState(stateIndex++ === 0 ? data : initial);
+      const html = render(WarbandTradingPanel, {
+        roster: { id: "roster-1", members: [], campaignId: null, battlesFought, treasury: "100" },
+        request: async () => data, onChanged: async () => {}, onUpdateRoster: () => {}, readOnly: false,
+      });
+      assert.match(html, /<h3>Trading Post<\/h3>/);
+      assert.doesNotMatch(html, /Mordheim shop|Item Shop/);
+      if (battlesFought === 0) {
+        assert.match(html, /The Trading Post opens after your first battle/);
+        assert.doesNotMatch(html, /aria-label="Trading Post category"/);
+      } else {
+        assert.match(html, /aria-label="Trading Post category"/);
+        assert.match(html, /After the first battle, buy here into the stash/);
+      }
+    }
+  } finally {
+    React.useState = originalUseState;
+  }
 });
 
 test("trading data refresh key tracks campaign permission-changing transitions", () => {
@@ -619,6 +647,7 @@ test("shop-originated member gear cannot be sold for a refund", () => {
     canReturnToStash: true, onReturnToStash: async () => {},
   };
   const shopGear = render(EquipmentInventoryPanel, props);
+  assert.match(shopGear, /Buy through the Trading Post into Warband stash/);
   assert.match(shopGear, /No refund/);
   assert.match(shopGear, /Return to stash/);
   assert.doesNotMatch(shopGear, /Sell ×/);
@@ -630,7 +659,7 @@ test("shop-originated member gear cannot be sold for a refund", () => {
   assert.match(legacyGear, /Refund ×1 · 25 GC/);
 });
 
-test("manual Tome recording is available only outside campaigns", () => {
+test("Tome learning requires a carried Tome and Arcane Lore, with no manual recording shortcut", () => {
   const data = {
     role: "Hero", warriorTypeName: null, hasSpellcastingProfile: false, canShowSpellSection: true,
     hasArcaneLore: false, hasAcademicSkillAccess: true, canLearnLesserMagic: false, lesserMagicUnlocked: false,
@@ -641,11 +670,24 @@ test("manual Tome recording is available only outside campaigns", () => {
   const callbacks = {
     onLearn: async () => true, onRoll: async () => null, onForget: async () => {},
     onReduceDifficulty: async () => true, onSetDiscipline: async () => true,
-    onRecordTome: async () => true, onConsumeTome: async () => true,
+    onConsumeTome: async () => true,
   };
   const freebuild = render(SpellPanel, { data, pendingAdvanceId: null, loading: false, error: "", ...callbacks });
-  const campaign = render(SpellPanel, { data, pendingAdvanceId: null, loading: false, error: "", allowTomeRecording: false, ...callbacks });
-  assert.match(freebuild, /Record acquired Tome/);
-  assert.doesNotMatch(campaign, /Record acquired Tome/);
-  assert.match(campaign, /Manual Tome recording is disabled/);
+  assert.doesNotMatch(freebuild, /Record acquired Tome|GC PAID|Learn Lesser Magic · consume/);
+  assert.match(freebuild, /through the Trading Post and transfer it from Warband stash/);
+  assert.match(freebuild, /Learn Arcane Lore from the Academic skill list/);
+  const missingTome = render(SpellPanel, { data: { ...data, hasArcaneLore: true },
+    pendingAdvanceId: null, loading: false, error: "", ...callbacks });
+  assert.match(missingTome, /Transfer a Tome of Magic from Warband stash to this Hero/);
+  assert.doesNotMatch(missingTome, /Learn Lesser Magic · consume/);
+  const ready = render(SpellPanel, { data: { ...data, hasArcaneLore: true, canLearnLesserMagic: true,
+    tomeInventory: [{ id: "tome", quantity: 2, unitCostPaid: 225, acquiredAt: "2026-10-09" }] },
+  pendingAdvanceId: null, loading: false, error: "", ...callbacks });
+  assert.match(ready, /TOME OF MAGIC INVENTORY · 2 owned/);
+  assert.match(ready, /Learn Lesser Magic · consume 1 Tome of Magic/);
+  assert.doesNotMatch(ready, /Record acquired Tome|GC PAID/);
+  const learned = render(SpellPanel, { data: { ...data, hasArcaneLore: true, lesserMagicUnlocked: true },
+    pendingAdvanceId: null, loading: false, error: "", ...callbacks });
+  assert.match(learned, /Lesser Magic is unlocked/);
+  assert.doesNotMatch(learned, /Learn Lesser Magic · consume/);
 });
