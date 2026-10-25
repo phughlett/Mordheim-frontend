@@ -218,6 +218,7 @@ export interface TradingRules {
 }
 
 export interface InventoryEntry {
+  stackKey?: string;
   id: string;
   name: string;
   category: ShopCategory;
@@ -390,6 +391,7 @@ export interface EquipmentOption {
 }
 
 export interface WarriorInventoryItem {
+  stackKey?: string;
   id: string;
   equipmentOptionId: string;
   name: string;

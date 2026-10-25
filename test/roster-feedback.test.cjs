@@ -114,7 +114,7 @@ test("warband creation shows grades and distinct Amazon variants without changin
   }
 });
 
-test("group equipment inspection shows the missing recruit and per-model counts", () => {
+test("group equipment inspection shows group size and totals without per-model counts", () => {
   const html = render(EquipmentInventoryPanel, {
     member: { id: "thunderers", role: "Henchman", groupSize: 4,
       equipmentStatus: { valid: false, allowIndividualGroupGear: false, items: [
@@ -124,9 +124,53 @@ test("group equipment inspection shows the missing recruit and per-model counts"
   });
   assert.match(html, /Incorrectly equipped - cannot enter battle/);
   assert.match(html, /Crossbow x 3/);
-  assert.match(html, /Model 4: 0/);
+  assert.match(html, /Group size: 4/);
+  assert.doesNotMatch(html, /Model \d+:/);
   assert.match(html, /Missing 1/);
   assert.match(html, /Complete group equipment/);
+});
+
+test("complete group equipment displays compact item totals", () => {
+  const html = render(EquipmentInventoryPanel, {
+    member: { id: "thunderers", role: "Henchman", groupSize: 4,
+      equipmentStatus: { valid: true, allowIndividualGroupGear: false, items: [
+        { key: "crossbow", name: "Crossbow", quantities: [1, 1, 1, 1], total: 4, missing: 0 },
+      ] } },
+    treasury: "0", loading: false, error: "", data: null,
+  });
+  assert.match(html, /Group equipment checked/);
+  assert.match(html, /Group size: 4/);
+  assert.match(html, /Crossbow x 4/);
+  assert.doesNotMatch(html, /Model \d+:|Missing \d+/);
+});
+
+test("recruitment and Trading Post copies share one owned and printed equipment stack", () => {
+  const inventory = [0, 1, 2, 3].map((index) => ({
+    id: `crossbow-${index}`, equipmentOptionId: index === 3 ? "crossbow" : "recruitment-crossbow",
+    shopItemId: index === 3 ? "crossbow" : null, stackKey: "shop:crossbow",
+    name: "Crossbow", category: "weapon", quantity: 1, modelIndex: index,
+    unitCostPaid: index === 3 ? 25 : 20, unitSaleValue: 12,
+    saleRestriction: null, stats: null,
+  }));
+  const props = {
+    member: { id: "group", role: "Henchman", groupSize: 4 }, treasury: "0", loading: false, error: "",
+    data: { inventory, availableOptions: [], recruitmentRefund: false, canSell: true, mutations: { eligible: false } },
+    stashReturns: inventory.map((item) => ({ ...item, returnQuantity: 1, returnModelIndex: -1 })),
+    onReturnToStash: async () => {}, canReturnToStash: true,
+  };
+  const html = render(EquipmentInventoryPanel, props);
+  assert.equal((html.match(/Crossbow ×4/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /Crossbow ×[13]/);
+  assert.match(html, /Sell ×4 · 48 GC/);
+  assert.equal((html.match(/>Return to stash/g) ?? []).length, 1);
+  const stacks = equipmentStacks({ equipment: { inventory } });
+  assert.equal(stacks.length, 1);
+  assert.equal(stacks[0].quantity, 4);
+  const recruitment = render(EquipmentInventoryPanel, { ...props,
+    data: { ...props.data, recruitmentRefund: true,
+      inventory: inventory.map((item) => ({ ...item, shopItemId: null })) },
+  });
+  assert.match(recruitment, /Refund ×4 · 85 GC/);
 });
 
 test("completion requires only the missing stash copy, not four additional copies", () => {

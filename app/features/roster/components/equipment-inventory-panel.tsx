@@ -87,7 +87,6 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       key: string;
       name: string;
       quantity: number;
-      unitCostPaid: number;
       sourceReference: string;
       stats: EquipmentStats | null;
       description: string;
@@ -95,18 +94,19 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       inventoryItemIds: string[];
       modelIndexes: number[];
       shopItemId: string | null;
-      unitSaleValue: number | null;
       saleRestriction: string | null;
     }>();
     for (const item of data?.inventory ?? []) {
       const key = member.role === "Henchman"
-        ? `${item.shopItemId ? `shop:${item.shopItemId}` : `option:${item.equipmentOptionId}`}/${item.unitCostPaid}`
+        ? item.stackKey ?? `${item.shopItemId ? `shop:${item.shopItemId}` : `option:${item.equipmentOptionId}`}/${item.unitCostPaid}`
         : item.id;
       const stack = stacks.get(key);
       if (stack) {
         stack.quantity += item.quantity;
         stack.inventoryItemIds.push(item.id);
         stack.modelIndexes.push(item.modelIndex);
+        stack.saleRestriction ||= item.saleRestriction ?? null;
+        if (!stack.stats && item.stats) stack.stats = item.stats;
         if (!stack.description && item.description) stack.description = item.description;
         if (item.shopItemId) stack.shopItemId = item.shopItemId;
       } else {
@@ -114,7 +114,6 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           key,
           name: item.name,
           quantity: item.quantity,
-          unitCostPaid: item.unitCostPaid,
           sourceReference: item.sourceReference,
           stats: item.stats,
           description: item.description ?? "",
@@ -122,7 +121,6 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
           inventoryItemIds: [item.id],
           modelIndexes: [item.modelIndex],
           shopItemId: item.shopItemId ?? null,
-          unitSaleValue: item.unitSaleValue ?? null,
           saleRestriction: item.saleRestriction ?? null,
         });
       }
@@ -175,12 +173,12 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
       </div>
       {member.equipmentStatus && <div aria-label="Group equipment check">
         <strong>{member.equipmentStatus.valid ? "Group equipment checked" : "Incorrectly equipped - cannot enter battle"}</strong>
+        <p className="trading-note">Group size: {member.groupSize}</p>
         <p className="trading-note">{member.equipmentStatus.allowIndividualGroupGear
           ? "This group may carry different equipment per model."
           : "Every model must carry identical equipment. Use Complete group equipment in the stash to equip missing copies."}</p>
         <ul>{member.equipmentStatus.items.map((item) => <li key={item.key}>
           <strong>{item.name} x {item.total}</strong>
-          <span> · {item.quantities.map((count, index) => `Model ${index + 1}: ${count}`).join(" · ")}</span>
           {item.missing > 0 && !member.equipmentStatus?.allowIndividualGroupGear && <strong> · Missing {item.missing}</strong>}
         </li>)}</ul>
       </div>}
@@ -234,9 +232,11 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         <span className="equipment-inventory-label">OWNED</span>
         {inventoryStacks.length ? inventoryStacks.map((stack) => {
           const creationRefund = data?.recruitmentRefund !== false;
-          const refund = (creationRefund ? stack.unitCostPaid : stack.unitSaleValue ?? 0) * stack.quantity;
-          const saleAvailable = creationRefund ? !stack.shopItemId && refund > 0
-            : Boolean(data?.canSell && stack.unitSaleValue !== null && !stack.saleRestriction);
+          const saleItems = (data?.inventory ?? []).filter((item) => stack.inventoryItemIds.includes(item.id)
+            && (creationRefund ? !item.shopItemId && item.unitCostPaid > 0 : item.unitSaleValue != null && !item.saleRestriction));
+          const saleQuantity = saleItems.reduce((sum, item) => sum + item.quantity, 0);
+          const refund = saleItems.reduce((sum, item) => sum + (creationRefund ? item.unitCostPaid : item.unitSaleValue ?? 0) * item.quantity, 0);
+          const saleAvailable = saleItems.length > 0 && (creationRefund || Boolean(data?.canSell));
           const modelNumbers = [...new Set(stack.modelIndexes)].sort((first, second) => first - second).map((index) => index + 1);
           const modelLabel = modelNumbers.length === 1 ? `Model ${modelNumbers[0]}` : `Models ${modelNumbers.join(", ")}`;
           const returns = stashReturns.filter((entry) => stack.inventoryItemIds.includes(entry.id));
@@ -250,7 +250,7 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
             <div className="equipment-owned-actions">
               <strong>{creationRefund ? "Refund" : "Resale"}: {refund} GC</strong>
               {saleAvailable
-                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`${creationRefund ? "Refund" : "Sell"} ${stack.quantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, stack.inventoryItemIds)}>{sellingStackKey === stack.key ? "Selling..." : `${creationRefund ? "Refund" : "Sell"} ×${stack.quantity} · ${refund} GC`}</button>
+                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`${creationRefund ? "Refund" : "Sell"} ${saleQuantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, saleItems.map((item) => item.id))}>{sellingStackKey === stack.key ? "Selling..." : `${creationRefund ? "Refund" : "Sell"} ×${saleQuantity} · ${refund} GC`}</button>
                 : <span className="equipment-unsellable">{creationRefund ? stack.shopItemId ? "No refund" : "Free · not for sale"
                   : stack.saleRestriction ?? "Sales are unavailable at this campaign stage."}</span>}
               {onReturnToStash && returnEntries.map((entry) => <div key={entry.id}>
