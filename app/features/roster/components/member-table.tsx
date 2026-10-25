@@ -181,6 +181,7 @@ export function MemberTable({
                     <strong>{member.name || "Unnamed warrior"}</strong>
                     {member.role === "Hero" && member.id === leaderId && <LeaderBadge />}
                     <small>{member.role}{member.role === "Henchman" ? ` group · ${member.groupSize}` : ""}</small>
+                    {member.equipmentStatus?.valid === false && <small className="error-text">Incorrectly equipped · cannot enter battle</small>}
                   </span>
                 </button>
               </td>

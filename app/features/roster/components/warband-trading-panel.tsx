@@ -170,7 +170,7 @@ export function StashItem({ entry, roster, enabled, onSend, canSell = false, onS
   entry: InventoryEntry;
   roster: Roster;
   enabled: boolean;
-  onSend: (entryId: string, memberId: string, quantity: number, modelIndex: number) => Promise<void>;
+  onSend: (entryId: string, memberId: string, quantity: number, modelIndex: number, fillMissing?: boolean) => Promise<void>;
   canSell?: boolean;
   onSell?: (entryId: string, quantity: number) => Promise<void>;
   mapControls?: React.ReactNode;
@@ -182,6 +182,7 @@ export function StashItem({ entry, roster, enabled, onSend, canSell = false, onS
   const recipients = roster.members.filter((member) => entry.eligibleRecipients?.some((recipient) => recipient.memberId === member.id));
   const member = recipients.find((recipient) => recipient.id === memberId);
   const individual = entry.eligibleRecipients?.find((recipient) => recipient.memberId === memberId)?.allowIndividualGroupGear;
+  const missingCopies = entry.eligibleRecipients?.find((recipient) => recipient.memberId === memberId)?.missingCopies ?? 0;
   const perModel = member?.role === "Henchman" && (modelIndex === -1 || !individual);
   const maximum = Math.min(1000, Math.floor(entry.quantity / (perModel ? member.groupSize : 1)));
   return <li>
@@ -206,9 +207,13 @@ export function StashItem({ entry, roster, enabled, onSend, canSell = false, onS
       <button className="outline-button" type="button" disabled={!enabled || !member || quantity > maximum} onClick={() => {
         if (member) void onSend(entry.id, member.id, quantity, member.role === "Henchman" ? individual ? modelIndex : -1 : 0);
       }}>Send to member</button>
+      {missingCopies > 0 && <button className="outline-button" type="button" disabled={!enabled || missingCopies > entry.quantity} onClick={() => {
+        if (member) void onSend(entry.id, member.id, 1, -1, true);
+      }}>Complete group equipment · {missingCopies} {missingCopies === 1 ? "copy" : "copies"}</button>}
     </div>
     {!recipients.length && <small>No warriors in this warband can use this item.</small>}
     {perModel && <small>Requires {quantity * member.groupSize} copies for all {member.groupSize} models.</small>}
+    {missingCopies > 0 && <small>Complete group equipment only fills missing copies; already equipped models keep their items.</small>}
     {onSell && entry.unitSaleValue != null && !entry.saleRestriction && <div className="trading-inline">
       <label className="equipment-field"><span>SELL QUANTITY</span><input aria-label={`Sell quantity for ${entry.name}`} type="number" min={1} max={Math.min(1000, entry.quantity)}
         value={saleQuantity} disabled={!canSell} onChange={(event) => setSaleQuantity(Math.max(1, Math.min(1000, entry.quantity, Math.floor(Number(event.target.value) || 1))))} /></label>
@@ -464,10 +469,10 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
     });
   }
 
-  async function transfer(entryId: string, memberId: string, quantity: number, modelIndex: number) {
+  async function transfer(entryId: string, memberId: string, quantity: number, modelIndex: number, fillMissing = false) {
     await act(async () => {
       const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/transfer`, "POST", {
-        direction: "to_member", inventoryId: entryId, memberId, quantity, modelIndex,
+        direction: "to_member", inventoryId: entryId, memberId, quantity, modelIndex, fillMissing,
       });
       if (rosterIdRef.current === roster.id) {
         setData(refreshed);

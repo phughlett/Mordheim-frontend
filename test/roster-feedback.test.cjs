@@ -114,6 +114,45 @@ test("warband creation shows grades and distinct Amazon variants without changin
   }
 });
 
+test("group equipment inspection shows the missing recruit and per-model counts", () => {
+  const html = render(EquipmentInventoryPanel, {
+    member: { id: "thunderers", role: "Henchman", groupSize: 4,
+      equipmentStatus: { valid: false, allowIndividualGroupGear: false, items: [
+        { key: "crossbow", name: "Crossbow", quantities: [1, 1, 1, 0], total: 3, missing: 1 },
+      ] } },
+    treasury: "0", loading: false, error: "", data: null,
+  });
+  assert.match(html, /Incorrectly equipped - cannot enter battle/);
+  assert.match(html, /Crossbow x 3/);
+  assert.match(html, /Model 4: 0/);
+  assert.match(html, /Missing 1/);
+  assert.match(html, /Complete group equipment/);
+});
+
+test("completion requires only the missing stash copy, not four additional copies", () => {
+  const originalUseState = React.useState;
+  const props = {
+    entry: { id: "stock", name: "Crossbow", category: "weapon", quantity: 1, unitCostPaid: 25,
+      eligibleRecipients: [{ memberId: "group", allowIndividualGroupGear: false, missingCopies: 1 }] },
+    roster: { members: [{ id: "group", name: "Thunderers", role: "Henchman", groupSize: 4 }] },
+    enabled: true, onSend: async () => {},
+  };
+  try {
+    function selected(extra = {}) {
+      let index = 0;
+      React.useState = (initial) => originalUseState(index++ === 0 ? "group" : initial);
+      return render(StashItem, { ...props, ...extra });
+    }
+    const html = selected();
+    assert.match(html, /<button[^>]*>Complete group equipment · 1 copy<\/button>/);
+    assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Complete group equipment/);
+    assert.match(html, /<button[^>]*disabled[^>]*>Send to member/);
+    assert.match(selected({ enabled: false }), /<button[^>]*disabled[^>]*>Complete group equipment/);
+  } finally {
+    React.useState = originalUseState;
+  }
+});
+
 test("included zero-price starting mounts remain inventory-only, not repeatable shop purchases", () => {
     const html = render(EquipmentInventoryPanel, {
       member: { id: "knight", role: "Hero", groupSize: 1 }, treasury: "415", loading: false, error: "",

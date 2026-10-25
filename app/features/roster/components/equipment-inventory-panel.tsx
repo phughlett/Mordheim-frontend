@@ -173,6 +173,17 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         <span className="equipment-inventory-label">INVENTORY</span>
         <strong>Weapons &amp; armour</strong>
       </div>
+      {member.equipmentStatus && <div aria-label="Group equipment check">
+        <strong>{member.equipmentStatus.valid ? "Group equipment checked" : "Incorrectly equipped - cannot enter battle"}</strong>
+        <p className="trading-note">{member.equipmentStatus.allowIndividualGroupGear
+          ? "This group may carry different equipment per model."
+          : "Every model must carry identical equipment. Use Complete group equipment in the stash to equip missing copies."}</p>
+        <ul>{member.equipmentStatus.items.map((item) => <li key={item.key}>
+          <strong>{item.name} x {item.total}</strong>
+          <span> · {item.quantities.map((count, index) => `Model ${index + 1}: ${count}`).join(" · ")}</span>
+          {item.missing > 0 && !member.equipmentStatus?.allowIndividualGroupGear && <strong> · Missing {item.missing}</strong>}
+        </li>)}</ul>
+      </div>}
       {purchaseLocked && <p className="trading-note" role="note">Recruitment equipment shops are closed after the first battle in Freebuild, or after campaign setup. Buy through the Trading Post into Warband stash, then transfer items here.</p>}
       {loading ? <p className="equipment-state">Loading equipment...</p> : purchaseLocked ? null : availableOptions.length ? (
         <div className="equipment-purchase-form">

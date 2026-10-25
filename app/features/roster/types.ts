@@ -103,6 +103,7 @@ export interface HiredSwordEquipmentChoice {
 }
 
 export interface Member {
+  equipmentStatus?: GroupEquipment | null;
   specialRules?: SourceRule[];
   id: string;
   name: string;
@@ -123,6 +124,14 @@ export interface Member {
   skills: string;
   notes: string;
   position: number;
+}
+
+export interface GroupEquipment {
+  memberId: string;
+  name: string;
+  allowIndividualGroupGear: boolean;
+  valid: boolean;
+  items: { key: string; name: string; quantities: number[]; perModel: number; total: number; missing: number }[];
 }
 
 export interface WarriorAdvance {
@@ -219,7 +228,7 @@ export interface InventoryEntry {
   description: string;
   memberId?: string;
   modelIndex?: number;
-  eligibleRecipients?: { memberId: string; allowIndividualGroupGear: boolean }[];
+  eligibleRecipients?: { memberId: string; allowIndividualGroupGear: boolean; missingCopies?: number }[];
   returnQuantity?: number;
   returnModelIndex?: number;
   nontransferable?: boolean;

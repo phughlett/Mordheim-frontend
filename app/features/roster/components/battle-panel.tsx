@@ -7,6 +7,7 @@ interface Participant {
   warband: string;
   team: "A" | "B";
   ready: boolean;
+  equipmentError: string | null;
   player: string | null;
 }
 
@@ -106,6 +107,7 @@ export function BattlePanel({ campaignId, rosters, request, onRostersChanged, on
                     {members.map((entry) => (
                       <div key={entry.rosterId} className="battle-participant">
                         <span>{entry.name}{entry.player && <span className="battle-player">({entry.player})</span>}{battle.status === "forming" && !entry.ready ? " (finishing pre-battle)" : ""}</span>
+                        {battle.status === "forming" && entry.equipmentError && <small className="error-text">{entry.equipmentError}</small>}
                         {battle.status === "forming" && <button className="outline-button" type="button" disabled={busy} onClick={() => act(`/battles/${battle.id}/participants/${entry.rosterId}`, "DELETE")}>Remove</button>}
                       </div>
                     ))}
@@ -122,8 +124,8 @@ export function BattlePanel({ campaignId, rosters, request, onRostersChanged, on
             <div className="battle-card-actions">
               {battle.status === "forming" && (
                 <>
-                  <button className="primary-button" type="button" disabled={busy} onClick={() => act(`/battles/${battle.id}/start`, "POST", { firstTeam: "A" }, true)}>Team A goes first</button>
-                  <button className="primary-button" type="button" disabled={busy} onClick={() => act(`/battles/${battle.id}/start`, "POST", { firstTeam: "B" }, true)}>Team B goes first</button>
+                  <button className="primary-button" type="button" disabled={busy || battle.participants.some((entry) => Boolean(entry.equipmentError))} onClick={() => act(`/battles/${battle.id}/start`, "POST", { firstTeam: "A" }, true)}>Team A goes first</button>
+                  <button className="primary-button" type="button" disabled={busy || battle.participants.some((entry) => Boolean(entry.equipmentError))} onClick={() => act(`/battles/${battle.id}/start`, "POST", { firstTeam: "B" }, true)}>Team B goes first</button>
                 </>
               )}
               {battle.status === "active" && (
