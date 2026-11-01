@@ -608,3 +608,77 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .campaign-restrictions { grid-template-columns: 1fr; }
   .trading-quote { grid-template-columns: 1fr; }
 }
+
+.landing-page { min-height: 100vh; color: #e8e8df; background: #202b25; }
+.landing-header, .landing-footer { width: min(1120px, calc(100% - 48px)); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.landing-header { min-height: 82px; border-bottom: 1px solid #3a463e; }
+.landing-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.landing-brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #a98b55; color: #e0c48e; font-family: "Barlow Condensed", sans-serif; font-size: 24px; font-weight: 600; }
+.landing-brand strong, .landing-brand small { display: block; }
+.landing-brand strong { font-family: "Barlow Condensed", sans-serif; font-size: 16px; letter-spacing: 1.2px; }
+.landing-brand small { margin-top: 2px; color: #aab8ae; font-size: 9px; letter-spacing: 1.4px; }
+.landing-nav { display: flex; align-items: center; gap: 28px; }
+.landing-nav a, .landing-text-link { color: #c6d0c8; font-size: 13px; text-decoration: none; }
+.landing-nav a:hover, .landing-text-link:hover { color: #e2c992; }
+.landing-nav .landing-nav-cta { padding: 9px 16px; border: 1px solid #718076; color: #f2eee2; }
+.landing-nav .landing-nav-cta:hover { border-color: #d4ad65; }
+.landing-page a:focus-visible { outline: 2px solid #e0c48e; outline-offset: 4px; }
+.landing-hero { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 104px 0 110px; }
+.landing-eyebrow { margin: 0 0 15px; color: #d4ad65; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+.landing-hero h1 { max-width: 790px; margin: 0; color: #f4f1e7; font-family: "Barlow Condensed", sans-serif; font-size: clamp(48px, 7.5vw, 82px); font-weight: 600; line-height: .99; letter-spacing: -.5px; }
+.landing-intro { max-width: 590px; margin: 25px 0 0; color: #c2cbc3; font-size: 18px; line-height: 1.7; }
+.landing-actions { margin-top: 30px; display: flex; align-items: center; flex-wrap: wrap; gap: 23px; }
+.landing-button { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 13px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.landing-button-primary { border: 1px solid #d4ad65; color: #202b25; background: #d4ad65; }
+.landing-button-primary:hover { border-color: #e4c47f; background: #e4c47f; }
+.landing-button span { font-size: 17px; }
+.landing-note { margin: 19px 0 0; color: #9eaaa0; font-size: 12px; }
+.landing-features { padding: 84px max(24px, calc((100% - 1120px) / 2)) 92px; color: #28342d; background: #f1f0e8; }
+.landing-section-heading { max-width: 700px; }
+.landing-section-heading h2, .landing-how h2, .landing-faq h2, .landing-end h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; font-size: clamp(34px, 5vw, 52px); font-weight: 600; line-height: 1.05; }
+.landing-section-heading > p:last-child { max-width: 590px; margin: 16px 0 0; color: #667269; font-size: 15px; line-height: 1.7; }
+.landing-features .landing-eyebrow, .landing-faq .landing-eyebrow { color: #8d7040; }
+.landing-feature-grid { margin-top: 42px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.landing-feature { min-height: 205px; padding: 21px 19px; border: 1px solid #d5d9d0; background: #f8f8f2; }
+.landing-feature-number { color: #9a7942; font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+.landing-feature h3 { margin: 23px 0 9px; color: #293a33; font-family: "Barlow Condensed", sans-serif; font-size: 22px; line-height: 1.1; }
+.landing-feature p { margin: 0; color: #68746b; font-size: 12px; line-height: 1.7; }
+.landing-how { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 88px 0; display: grid; grid-template-columns: .9fr 1.1fr; gap: 64px; }
+.landing-steps { margin: 0; padding: 0; display: grid; gap: 21px; list-style: none; }
+.landing-steps li { display: flex; align-items: flex-start; gap: 14px; }
+.landing-steps li > span { width: 28px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid #92794d; color: #e0c48e; font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+.landing-steps p { margin: 2px 0 0; color: #bac5bc; font-size: 13px; line-height: 1.65; }
+.landing-steps strong { color: #f0eee3; }
+.landing-faq { padding: 78px max(24px, calc((100% - 780px) / 2)) 86px; color: #28342d; background: #f1f0e8; }
+.landing-faq h2 { margin-bottom: 25px; }
+.landing-faq details { border-top: 1px solid #d5d9d0; }
+.landing-faq details:last-child { border-bottom: 1px solid #d5d9d0; }
+.landing-faq summary { padding: 17px 0; color: #293a33; font-size: 14px; font-weight: 600; cursor: pointer; }
+.landing-faq details p { max-width: 650px; margin: -4px 0 18px; color: #667269; font-size: 13px; line-height: 1.7; }
+.landing-end { padding: 74px 24px 80px; text-align: center; }
+.landing-end p { margin: 12px 0 23px; color: #bac5bc; font-size: 14px; }
+.landing-footer { min-height: 100px; border-top: 1px solid #3a463e; }
+.landing-footer p { max-width: 480px; color: #9eaaa0; font-size: 10px; line-height: 1.6; text-align: right; }
+
+@media (max-width: 850px) {
+  .landing-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-how { grid-template-columns: 1fr; gap: 32px; }
+}
+
+@media (max-width: 560px) {
+  .landing-header, .landing-footer, .landing-hero, .landing-how { width: calc(100% - 36px); }
+  .landing-header { min-height: 70px; }
+  .landing-nav { gap: 13px; }
+  .landing-nav a { font-size: 11px; }
+  .landing-nav a[href="#how-it-works"] { display: none; }
+  .landing-nav .landing-nav-cta { padding: 8px 10px; }
+  .landing-hero { padding: 76px 0 82px; }
+  .landing-intro { font-size: 16px; }
+  .landing-features, .landing-faq { padding: 64px 18px; }
+  .landing-feature-grid { grid-template-columns: 1fr; margin-top: 28px; }
+  .landing-feature { min-height: unset; }
+  .landing-feature h3 { margin-top: 15px; }
+  .landing-how { padding: 66px 0; }
+  .landing-footer { padding: 19px 0; align-items: flex-start; flex-direction: column; gap: 14px; }
+  .landing-footer p { margin: 0; text-align: left; }
+}

@@ -174,7 +174,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   activeRosterIdRef.current = roster.id;
   activeMemberIdRef.current = activeMemberId;
   const shareLink = roster.shareCode
-    ? `${window.location.origin}/?share=${encodeURIComponent(roster.shareCode)}`
+    ? `${window.location.origin}/app?share=${encodeURIComponent(roster.shareCode)}`
     : "";
   const members = roster.members;
   const selectedMember = members.find((item) => item.id === activeMemberId);

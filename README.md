@@ -67,6 +67,11 @@ npm run dev
 The development server listens on port 5173. Set `VITE_API_BASE_URL` to the
 backend's API URL (by default `http://localhost:4000/api`).
 
+The public landing page at `/` and sign-in/roster app at `/app` are pre-rendered
+at build time. The SEO canonical URL, `robots.txt` and `sitemap.xml` use
+`https://mordheim.hughlett.org`; update those references if the production
+domain changes. The sitemap intentionally lists only the public landing page.
+
 ## Build and validate
 
 ```sh
