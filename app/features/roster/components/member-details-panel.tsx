@@ -11,6 +11,7 @@ import { LeaderBadge } from "./leader-badge";
 import { SourceRules } from "./source-rules";
 
 interface MemberDetailsPanelProps {
+  injuries?: React.ReactNode;
   member: Member;
   freebuild?: boolean;
   equipmentPurchaseLocked?: boolean;
@@ -63,6 +64,7 @@ interface MemberDetailsPanelProps {
 }
 
 export function MemberDetailsPanel({
+  injuries,
   member,
   freebuild = false,
   equipmentPurchaseLocked = false,
@@ -135,6 +137,7 @@ export function MemberDetailsPanel({
         <h3>Details {member.role === "Hero" && capacity?.leader?.id === member.id && <LeaderBadge />}</h3>
         <button className="close-details" onClick={onClose} aria-label="Close details" type="button">×</button>
       </div>
+      {injuries}
       <div className="details-identity">
         <div className="identity-name">
         <label className="detail-field">

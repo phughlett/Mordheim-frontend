@@ -103,6 +103,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .autosave i { width: 6px; height: 6px; border-radius: 50%; background: #759b71; }
 .autosave i.is-saving { background: #d2a24e; }
 .avatar { width: 29px; height: 29px; border: 1px solid #c8cec6; border-radius: 50%; color: #42534a; background: transparent; font-family: "Barlow Condensed", sans-serif; font-size: 13px; }
+.account-popover { inset: 52px 42px auto auto; margin: 0; padding: 14px; max-width: calc(100vw - 32px); border: 1px solid #c8cec6; border-radius: 4px; background: #f7f7f2; color: #42534a; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+.account-popover strong { display: block; margin-bottom: 12px; overflow-wrap: anywhere; }
+.account-popover button { width: 100%; }
 .page-content { width: min(1400px, 100%); margin: 0 auto; padding: 36px 42px 20px; }
 .api-error { margin-bottom: 18px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid #d8a49c; border-radius: 2px; color: #773c34; background: #f7e8e5; font-size: 11px; }
 .api-error button { flex: 0 0 auto; border: 0; color: #773c34; background: transparent; font-size: 10px; font-weight: 600; text-decoration: underline; }
@@ -312,6 +315,16 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .skills-detail { margin-top: 2px; padding: 5px 6px; border: 1px solid #d7dcd5; border-radius: 2px; background: #f3f5f1; display: grid; gap: 4px; }
 .skills-detail p { margin: 0; color: #5a655d; font-size: 8px; line-height: 1.4; }
 .skills-detail small { color: #7d877e; font-size: 8px; }
+.injury-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 6px; align-items: start; }
+.injury-card { min-width: 0; margin-top: 0; color: #39443d; font-size: 9px; overflow-wrap: anywhere; }
+.injury-card .injury-rule-text { white-space: pre-line; }
+.injury-card > button { justify-self: start; }
+.graveyard h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; }
+.graveyard-entry { margin-top: 10px; padding: 10px; border: 1px solid #cbd1c9; }
+.graveyard-entry > summary { cursor: pointer; }
+.graveyard-snapshot { padding-top: 10px; overflow-wrap: anywhere; }
+.graveyard-stats { width: 100%; text-align: center; border-collapse: collapse; }
+.graveyard-stats th, .graveyard-stats td { padding: 4px; border: 1px solid #cbd1c9; }
 .skills-error { margin: 0; color: #9a3c30; font-size: 9px; }
 .skills-state { margin: 0; color: #77817a; font-size: 9px; line-height: 1.4; }
 .skills-learned { padding-top: 8px; display: grid; gap: 6px; border-top: 1px solid #d7dcd5; }
@@ -353,6 +366,11 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .new-roster-dialog h2 { margin: 8px 0 4px; color: var(--ink); font-family: "Barlow Condensed", sans-serif; font-size: 25px; }
 .new-roster-dialog .detail-field { margin-top: 18px; }
 .new-roster-dialog-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+.injury-dialog { width: min(720px, calc(100% - 32px)); max-height: calc(100dvh - 32px); margin: auto; overflow-y: auto; }
+.injury-dialog::backdrop { background: rgba(25, 34, 29, .48); }
+.injury-dialog fieldset { min-width: 0; }
+.injury-dialog .advancement-heading { gap: 16px; align-items: flex-start; }
+.injury-dialog .advancement-heading h2 { margin-top: 0; }
 .empty-state { min-height: 300px; padding: 45px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 1px solid #cdd2cb; border-bottom: 1px solid #cdd2cb; background: rgba(247,247,242,.48); text-align: center; }
 .empty-mark { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid #c8b582; color: #a48750; font-size: 22px; }
 .empty-state h3 { margin: 14px 0 0; color: #303a34; font-family: "Barlow Condensed", sans-serif; font-size: 23px; font-weight: 600; }
@@ -382,6 +400,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .topbar-actions { gap: 10px; }
   .autosave { font-size: 9px; }
   .avatar { width: 25px; height: 25px; }
+  .account-popover { top: 40px; right: 16px; }
   .page-content { padding: 25px 16px 16px; }
   .page-heading { align-items: flex-start; }
   .warband-trading > .section-heading { grid-template-columns: minmax(0, 1fr); }
@@ -506,8 +525,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .auth-card h1 { margin: 0; letter-spacing: 4px; color: #d1aa62; }
 .auth-card label { display: grid; gap: 4px; font-size: 12px; }
 .auth-card input { padding: 8px; }
-.sidebar-user { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
-.sidebar-user button { background: none; border: 1px solid #46574e; color: #d1aa62; border-radius: 4px; cursor: pointer; padding: 2px 8px; }
 .invite-code { margin: 4px 8px; font-size: 11px; color: #b9c4bc; }
 .invite-code code { color: #d1aa62; user-select: all; }
 .battle-player { color: #9aa79f; font-size: 11px; margin-left: 6px; }
@@ -572,6 +589,9 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .print-spell-effect { font-size: 9pt; }
   .print-empty { color: #666; font-style: italic; }
   .print-notes { margin-top: 4px; font-size: 9pt; }
+  .print-graveyard { margin-top: 12px; }
+  .print-graveyard .graveyard-entry > summary { break-after: avoid; }
+  .print-graveyard .graveyard-stats, .print-graveyard li { break-inside: avoid; }
   .print-reference { break-before: page; page-break-before: always; }
   .print-reference h2 { font-size: 16pt; margin-bottom: 6px; }
   .print-glossary { margin-top: 8px; font-size: 9pt; }

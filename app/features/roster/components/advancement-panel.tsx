@@ -105,6 +105,9 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
               Experience is locked at {data.lockedExperience} or above by a recorded advancement. Remove the advancement award to lower it.
             </p>
           )}
+          {Boolean(data.injuryExperienceFloor) && <p className="advancement-rules">
+            Experience cannot go below {data.injuryExperienceFloor}: XP awarded by injuries is protected, even if advancement awards are removed.
+          </p>}
           {data.maximumProfile
             ? <p className="advancement-rules">Stat limits: {data.maximumProfile} profile.</p>
             : isHeroTable && <p className="advancement-rules">No racial maximum profile is listed for this warrior.</p>}

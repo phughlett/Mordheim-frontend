@@ -37,7 +37,11 @@ const { SkillsPanel } = require("../app/features/roster/components/skills-panel.
 const { RosterFields, WarbandCurrency } = require("../app/features/roster/components/roster-fields.tsx");
 const { RosterHeading } = require("../app/features/roster/components/roster-heading.tsx");
 const { MemberTable } = require("../app/features/roster/components/member-table.tsx");
+const { InjuryPanel, InjuryChoice, InjuryResultView, HatredTargetField, hatredTargets } = require("../app/features/roster/components/injury-panel.tsx");
+const { Graveyard } = require("../app/features/roster/components/graveyard.tsx");
+const { fieldingSummary } = require("../app/features/roster/fielding-summary.ts");
 const { RosterSummary } = require("../app/features/roster/components/roster-summary.tsx");
+const { RosterTopbar } = require("../app/features/roster/components/roster-topbar.tsx");
 const { SourceRules, gradeLabel } = require("../app/features/roster/components/source-rules.tsx");
 const { NewRosterDialog } = require("../app/features/roster/components/new-roster-dialog.tsx");
 if (previousAuth) require.cache[authPath] = previousAuth;
@@ -45,6 +49,242 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+test("topbar account uses the signed-in username and a dismissible logout popover", () => {
+  const html = render(RosterTopbar, { loading: false, saved: true, username: "alice", onLogout: () => {} });
+  assert.match(html, /aria-label="Account for alice"/);
+  assert.match(html, />A<\/button>/);
+  assert.match(html, /popover="auto"/);
+  assert.match(html, /<strong>alice<\/strong>/);
+  assert.match(html, />Log out<\/button>/);
+  assert.match(html, /All changes saved/);
+  const target = html.match(/popoverTarget="([^"]+)"/i)?.[1];
+  assert.ok(target);
+  assert.ok(html.includes(`id="${target}"`));
+});
+test("stash and Graveyard have distinct roster-scoped sibling keys", () => {
+  const source = ts.createSourceFile("hero.tsx", fs.readFileSync(require.resolve("../app/features/roster/hero.tsx"), "utf8"),
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const keys = new Map();
+  function visit(node) {
+    if (ts.isJsxSelfClosingElement(node) && ["WarbandTradingPanel", "Graveyard"].includes(node.tagName.getText(source))) {
+      const key = node.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.text === "key");
+      assert.ok(key?.initializer && ts.isJsxExpression(key.initializer));
+      const expression = key.initializer.expression;
+      assert.ok(expression && ts.isTemplateExpression(expression));
+      assert.equal(expression.templateSpans.length, 1);
+      assert.equal(expression.templateSpans[0].expression.getText(source), "roster.id");
+      keys.set(node.tagName.getText(source), expression.head.text);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.equal(keys.size, 2);
+  assert.notEqual(keys.get("WarbandTradingPanel"), keys.get("Graveyard"));
+});
+const injuryTestTable = {
+  name: "Heroes' injuries", source: { pages: [80] }, results: [
+    { id: "leg-wound", name: "LEG WOUND", rolls: [22], ruleText: "The warrior’s leg is broken. He suffers a -1 Movement characteristic penalty from now on." },
+    { id: "multiple-injuries", name: "MULTIPLE INJURIES", rolls: [16, 21], ruleText: "Roll D6 times on this table.", secondaryRoll: { type: "D6" } },
+    { id: "sold-to-the-pits", name: "SOLD TO THE PITS", rolls: [65], ruleText: "If the warrior loses, roll to see whether he is dead or injured (ie, a D66 roll of 11-35)." },
+  ],
+};
+test("Bitter Enmity offers free text and roll-specific campaign opponents, including simulated previews", () => {
+  const opponents = [{ name: "Enemy band", warband: "Skaven", leader: { id: "leader", name: "Enemy captain" },
+    heroes: [{ id: "hero", name: "Enemy hero" }] }];
+  const props = { value: "", onChange: () => {} };
+  assert.match(render(HatredTargetField, props), /aria-label="Bitter Enmity target details"/);
+  assert.match(render(HatredTargetField, props), /maxLength="300"/i);
+  const attacker = render(HatredTargetField, { ...props, opponents, roll: 2 });
+  assert.match(attacker, /Enemy hero \(Enemy band\)/);
+  assert.match(attacker, /Enemy captain \(leader of Enemy band\)/);
+  const leader = render(HatredTargetField, { ...props, opponents, roll: 4 });
+  assert.match(leader, /Enemy captain \(leader of Enemy band\)/);
+  assert.doesNotMatch(leader, /Enemy hero/);
+  assert.match(render(HatredTargetField, { ...props, opponents, roll: 5 }), /value="Enemy band"/);
+  assert.match(render(HatredTargetField, { ...props, opponents, roll: 6 }), /All Skaven warbands/);
+  assert.match(render(HatredTargetField, { ...props, opponents: [] }), /No recorded opponent/);
+  assert.match(render(HatredTargetField, { ...props, opponents, roll: 5, value: "Historical enemy" }), /value="Historical enemy"/);
+  const result = { id: "bitter-enmity", name: "BITTER ENMITY", roll: 56, secondaryRoll: 5, effects: [], children: [], hatredTarget: "Enemy band" };
+  assert.match(render(InjuryResultView, { result, applied: false, onChange: () => {}, hatredOpponents: opponents }),
+    /aria-label="Bitter Enmity target"/);
+  assert.doesNotMatch(render(InjuryResultView, { result }), /<input|<select/);
+  assert.deepEqual(hatredTargets({ ...result, id: "multiple-injuries", children: [result, { ...result, hatredTarget: "Another target" }] }),
+    ["Enemy band", "Another target"]);
+});
+
+test("injury choices offer manual secondary results, per-injury selection and pit fight outcomes", () => {
+  const table = injuryTestTable;
+  const props = { table, heroTable: table, onChange: () => {} };
+  const multiple = render(InjuryChoice, { ...props, value: { resultId: "multiple-injuries", secondaryRoll: 2 } });
+  assert.match(multiple, /Injury 1/);
+  assert.match(multiple, /Injury 2/);
+  assert.match(multiple, /D6 SECONDARY RESULT/);
+  assert.match(multiple, /Each resulting injury with an effect will be saved as its own tracker entry/);
+  const pit = render(InjuryChoice, { ...props, value: { resultId: "sold-to-the-pits", pitOutcome: "lost" } });
+  assert.match(pit, /Won · \+2 XP and \+50 GC/);
+  assert.match(pit, /Lost · roll injuries again/);
+  assert.match(pit, /Pit defeat injury/);
+  assert.match(pit, /11-35/);
+});
+
+test("injury panel gates Add injury, supports a cancellable preview and read-only inspection", () => {
+  const originalUseState = React.useState;
+  const table = injuryTestTable;
+  const result = { id: "leg-wound", name: "LEG WOUND", ruleText: table.results.find((result) => result.id === "leg-wound").ruleText,
+    children: [], roll: 22 };
+  const props = { member: { id: "hero", role: "Hero", groupSize: 1 }, request: async () => {}, onChanged: async () => {}, refreshKey: "1" };
+  const data = { table, heroTable: table, canAdd: true, canCheckOldWound: true, availability: { available: true, needsOldWoundRoll: false }, history: [] };
+  function withState(values, extra = {}) {
+    let index = 0;
+    React.useState = (initial) => originalUseState(index < values.length ? values[index++] : initial);
+    return render(InjuryPanel, { ...props, ...extra });
+  }
+  try {
+    assert.match(withState([data]), />Add injury</);
+    assert.doesNotMatch(withState([data]), /role="dialog"/);
+    assert.doesNotMatch(withState([{ ...data, canAdd: false }]), />Add injury</);
+    assert.match(withState([data], { readOnly: true }), /<button[^>]*disabled[^>]*>Add injury/);
+    const preview = withState([data, true, {}, 0, undefined, { id: "preview", result, modelIndex: 0, battleNumber: 1 }]);
+    assert.match(preview, /Apply injury/);
+    assert.match(preview, /<dialog[^>]*class="new-roster-dialog injury-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby=/);
+    assert.match(preview, /aria-label="Close injury dialog"/);
+    assert.match(preview, /Cancel · save nothing/);
+    assert.match(preview, /He suffers a -1 Movement characteristic penalty from now on/);
+    const group = withState([data, true], { member: { id: "group", role: "Henchman", groupSize: 3 } });
+    assert.match(group, /aria-label="Injured model"/);
+    assert.match(group, /Model 3/);
+    const history = withState([{ ...data, history: [
+      { id: "first", battle_number: 1, mode: "manual", result },
+      { id: "second", battle_number: 2, mode: "simulated", pending: true, result },
+    ] }]);
+    assert.match(history, /class="injury-cards" aria-label="Recorded injuries"/);
+    assert.equal((history.match(/<article class="skills-detail injury-card">/g) ?? []).length, 2);
+    assert.match(history, /Battle 2 · simulated · Pending/);
+    assert.match(history, /Resolve LEG WOUND/);
+    const resolution = withState([data, true, { resultId: "sold-to-the-pits" }, 0, "pending"]);
+    assert.match(resolution, /Resolve injury · Unnamed warrior/);
+    const failed = withState([data, true, {}, 0, undefined, null, "Preview failed"]);
+    assert.match(failed, /<dialog[\s\S]*role="alert" class="skills-error">Preview failed/);
+  } finally { React.useState = originalUseState; }
+});
+
+test("injury result cards retain nested outcomes, metadata and exact paragraph breaks", () => {
+  const result = { id: "multiple-injuries", name: "MULTIPLE INJURIES", ruleText: "First paragraph.\nSecond paragraph.", roll: 16,
+    children: [{ id: "leg-wound", name: "LEG WOUND", ruleText: "Movement penalty.", roll: 22, children: [] }] };
+  const html = render(InjuryResultView, { result, metadata: "Battle 3 · manual" });
+  assert.equal((html.match(/<article class="skills-detail injury-card">/g) ?? []).length, 2);
+  assert.match(html, /Battle 3 · manual/);
+  assert.match(html, /class="injury-rule-text">First paragraph\.\nSecond paragraph\./);
+  assert.match(html, /class="injury-cards"><article/);
+});
+
+test("injury history retains exact rules and unavailable warriors are excluded from fielding totals", () => {
+  const text = "The warrior causes fear from now on.";
+  assert.match(render(InjuryResultView, { result: { id: "horrible-scars", name: "HORRIBLE SCARS", ruleText: text, roll: 64, children: [] } }), /The warrior causes fear from now on\./);
+  assert.deepEqual(fieldingSummary([
+    { role: "Hero", groupSize: 1, injuryAvailability: { available: false } },
+    { role: "Hero", groupSize: 1 },
+    { role: "Henchman", groupSize: 3 },
+  ]), { totalFielded: 4, routThreshold: 1 });
+});
+
+test("selected Madness effects show gameplay references in injury cards, rows and the printable roster", () => {
+  for (const [rule, gameplayName, gameplayRules] of [
+    ["frenzy", "Frenzy", "Double the Attacks characteristic; the second hand weapon bonus is not doubled. Knocked down or stunned ends Frenzy for this battle."],
+    ["stupidity", "Stupidity", "Test Leadership on 2D6 at the start of each turn. Failure prevents spells and combat attacks; out of combat roll D6 for movement or inactivity."],
+  ]) {
+    const effect = { type: "psychology", rule, gameplayName, gameplayRules,
+      sourceReference: "1Rules.pdf - Leadership & psychology, p. 23", name: `MADNESS - ${gameplayName}` };
+    const result = { id: "madness", name: "MADNESS", secondaryName: gameplayName, secondaryText: `Selected ${gameplayName}.`,
+      ruleText: "Roll to determine the type of Madness.", roll: 24, effects: [effect], children: [] };
+    const card = render(InjuryResultView, { result });
+    assert.match(card, new RegExp(`Selected effect · ${gameplayName}`));
+    assert.ok(card.includes(gameplayRules));
+    assert.match(card, /Leadership &amp; psychology, p\. 23/);
+    const member = { id: "hero", name: "Injured hero", role: "Hero", type: "Youngblood", stats: { A: "1" },
+      experience: "0", groupSize: 1, position: 0, injuryConditions: [effect] };
+    const row = render(MemberTable, {
+      members: [member], activeMemberId: null, warriorTypes: [], memberOrderCustomized: false,
+      onReorderMembers: () => {}, onSelectMember: () => {}, onSelectWarriorType: () => {},
+      onUpdateMember: () => {}, onRemoveMember: () => {}, isPromotedHenchman: () => false,
+      isWarriorTypeAtLimit: () => false, warriorTypeOptionLabel: () => "",
+    });
+    assert.ok(row.includes(`<small>${gameplayName}</small>`));
+    const printed = render(RosterPrintSheet, { data: {
+      roster: { name: "Test roster", warband: "Mercenaries", treasury: "0", rating: 5, wyrdstone: "0", battlesFought: 1 },
+      printedAt: "2026-11-01", stash: [],
+      sheets: [{ member, equipment: null, skills: null, spells: null, advancements: { canGainExperience: false } }],
+    } });
+    assert.ok(printed.includes(gameplayRules));
+    assert.ok(printed.includes(`${gameplayName} (caused by MADNESS - ${gameplayName})`));
+    assert.doesNotMatch(printed, /Roll to determine/);
+  }
+});
+
+test("injury stat references show the applied delta and warn against applying it twice", () => {
+  const effect = { type: "stat-modifier", stat: "T", value: -1, previousValue: 3, currentValue: 2 };
+  const html = render(InjuryResultView, { result: {
+    id: "chest-wound", name: "CHEST WOUND", ruleText: "Toughness penalty.", roll: 26, effects: [effect], children: [],
+  } });
+  assert.match(html, /T -1 \(3 to 2\)/);
+  assert.match(html, /Already included in the roster stat; do not apply again/);
+  const preview = render(InjuryResultView, { applied: false, result: {
+    id: "chest-wound", name: "CHEST WOUND", ruleText: "Toughness penalty.", roll: 26, effects: [effect], children: [],
+  } });
+  assert.match(preview, /Will be applied to the roster stat/);
+  assert.doesNotMatch(preview, /Already included/);
+});
+
+test("pit XP references distinguish preview awards from protected recorded totals", () => {
+  const result = { id: "sold-to-the-pits", name: "SOLD TO THE PITS", pitOutcome: "won", ruleText: "Pit victory.",
+    roll: 65, children: [], effects: [{ type: "experience", value: 2, previousValue: 7, currentValue: 9 }] };
+  assert.match(render(InjuryResultView, { result }), /\+2 XP awarded\. Experience cannot be reduced below 9/);
+  assert.match(render(InjuryResultView, { result, applied: false }), /Will award \+2 XP and protect the resulting XP total when confirmed/);
+});
+
+test("Graveyard shows archived full Hero details read-only and prints without adding to fielding totals", () => {
+  const entry = { id: "grave", name: "Fallen Hero", reason: "death", battle_number: 3, snapshot_complete: true,
+    cause: { id: "dead", name: "DEAD", ruleText: "Removed after fatal injuries.", roll: 11, effects: [], children: [] },
+    snapshot: {
+      member: { name: "Fallen Hero", typeName: "Youngblood", experience: 8, stats: { M: "3", T: "2" }, notes: "Hero memorial",
+        equipment: "Historical gear note", skills: "Historical skill note" },
+      equipment: [{ id: "sword", name: "Sword", quantity: 2, unit_cost_paid: 10 }],
+      skills: [{ id: "skill", name: "Mighty Blow", category: "Strength", description: "+1 Strength in combat.", source_reference: "Core" }],
+      spells: [{ id: "spell", name: "Archived spell", discipline: "Lesser Magic", casting_difficulty: 6, effect_summary: "Spell effect." }],
+      injuries: [],
+    },
+  };
+  const html = render(Graveyard, { entries: [entry] });
+  for (const text of ["Graveyard · 1", "Fallen Hero", "Youngblood · Died · Battle 3", "Sword ×2", "Mighty Blow", "Archived spell",
+    "Difficulty 6", "Hero memorial", "Historical gear note", "Historical skill note", "Removed after fatal injuries."]) assert.ok(html.includes(text), text);
+  assert.match(html, /aria-label="Fallen Hero archived stats"/);
+  assert.doesNotMatch(html, /<input|<button|<select/);
+  const undo = { ...entry, reason: "dismissed", canRestore: true };
+  const restoreProps = { entries: [undo], onRestore: async () => {} };
+  assert.match(render(Graveyard, restoreProps), /Undo removal/);
+  assert.doesNotMatch(render(Graveyard, restoreProps), /disabled/);
+  assert.doesNotMatch(render(Graveyard, { ...restoreProps, readOnly: true }), /<button/);
+  assert.doesNotMatch(render(Graveyard, { ...restoreProps, printable: true }), /<button/);
+  assert.doesNotMatch(render(Graveyard, { ...restoreProps, entries: [entry] }), /<button/);
+  const blocked = render(Graveyard, { ...restoreProps, entries: [{ ...undo, canRestore: false, restoreBlock: "The battle counter has changed." }] });
+  assert.match(blocked, /disabled/);
+  assert.match(blocked, /The battle counter has changed/);
+  const printed = render(RosterPrintSheet, { data: {
+    roster: { name: "Memorial roster", treasury: "0", rating: "0", wyrdstone: "0", graveyard: [entry] },
+    sheets: [], stash: [], printedAt: "2026-11-01",
+  } });
+  assert.match(printed, /class="print-graveyard"/);
+  assert.match(printed, /class="graveyard-entry" open=""/);
+  assert.match(printed, /<dt>Total Fielded<\/dt><dd>0 warriors<\/dd>/);
+  assert.match(printed, /Archived spell/);
+  const legacy = render(Graveyard, { entries: [{ ...entry, snapshot_complete: false }] });
+  assert.match(legacy, /Legacy record: this Hero was removed before full snapshots were available/);
+  assert.doesNotMatch(legacy, /archived stats/);
+  assert.match(render(Graveyard, { entries: [] }), /No Heroes have been removed/);
+  for (const [reason, label] of [["retirement", "Retired"], ["captivity", "Removed in captivity"], ["dismissed", "Dismissed"]]) {
+    assert.ok(render(Graveyard, { entries: [{ ...entry, reason }] }).includes(label));
+  }
+});
 
 test("Mordheim maps offer manual choice, entered dice and simulated dice with the complete rules table", () => {
   const mapTypes = [
@@ -393,6 +633,64 @@ test("currency moves out of overview and preserves Freebuild, campaign and read-
     assert.equal((locked.match(/disabled=""/g) || []).length, 2);
     assert.doesNotMatch(locked, /Changes save automatically/);
   }
+});
+
+test("Warrior and group rows toggle details once while editing controls stay independent", () => {
+  const members = [
+    { id: "hero", name: "Captain", role: "Hero", stats: {}, experience: "20", groupSize: 1, position: 0 },
+    { id: "group", name: "Swordsmen", role: "Henchman", stats: {}, experience: "0", groupSize: 3, position: 1 },
+  ];
+  let activeMemberId = null;
+  const selections = [];
+  const props = {
+    members, warriorTypes: [], memberOrderCustomized: false,
+    activeDetails: React.createElement("div", null, "Member details"),
+    onReorderMembers: () => {}, onSelectMember: (id) => { activeMemberId = id; selections.push(id); },
+    onSelectWarriorType: () => {}, onUpdateMember: () => {}, onRemoveMember: () => {},
+    isPromotedHenchman: () => false, isWarriorTypeAtLimit: () => false, warriorTypeOptionLabel: () => "",
+  };
+  const originalUseState = React.useState;
+  function elements(node) {
+    return React.Children.toArray(node).flatMap((child) =>
+      React.isValidElement(child) ? [child, ...elements(child.props.children)] : []);
+  }
+  function click(memberId, target) {
+    React.useState = (initial) => [initial, () => {}];
+    let tree;
+    try { tree = MemberTable({ ...props, activeMemberId }); }
+    finally { React.useState = originalUseState; }
+    const rows = elements(tree).filter((node) => node.type === "tr" && node.props.onClick);
+    const row = rows[members.findIndex((member) => member.id === memberId)];
+    const control = target === "row" ? row : elements(row).find((node) =>
+      target === "name" ? node.props.className === "warrior-name"
+        : target === "remove" ? node.props.className === "remove-button remove-text-button"
+          : node.type === target);
+    assert.ok(control, `Missing ${target} control`);
+    if (target === "name") assert.equal(control.props["aria-expanded"], memberId === activeMemberId);
+    let stopped = false;
+    control.props.onClick({ stopPropagation: () => { stopped = true; } });
+    if (control !== row && !stopped) row.props.onClick();
+  }
+  for (const member of members) {
+    for (const target of ["row", "name"]) {
+      const start = selections.length;
+      click(member.id, target);
+      assert.equal(activeMemberId, member.id);
+      assert.match(render(MemberTable, { ...props, activeMemberId }), /member-details-row/);
+      for (const control of member.role === "Hero" ? ["input", "remove"] : ["input", "select", "remove"]) {
+        click(member.id, control);
+        assert.equal(activeMemberId, member.id);
+      }
+      click(member.id, target);
+      assert.equal(activeMemberId, null);
+      assert.doesNotMatch(render(MemberTable, { ...props, activeMemberId }), /member-details-row/);
+      assert.deepEqual(selections.slice(start), [member.id, null]);
+    }
+  }
+  click("hero", "name");
+  click("group", "name");
+  assert.equal(activeMemberId, "group");
+  assert.deepEqual(selections.slice(-2), ["hero", "group"]);
 });
 
 test("Hero rows visibly identify only the current leader and follow succession", () => {

@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { statLabels, type StatLabel, type Member, type MemberRole, type WarriorTypeOption } from "../types";
 import { getMaximumExperience } from "../experience-rules";
 import { LeaderBadge } from "./leader-badge";
+import { injuryEffectLabel } from "../injury-effects";
 
 interface MemberTableProps {
   activeDetails?: React.ReactNode;
@@ -11,7 +12,7 @@ interface MemberTableProps {
   warriorTypes: WarriorTypeOption[];
   memberOrderCustomized: boolean;
   onReorderMembers: (memberIds: string[]) => void;
-  onSelectMember: (memberId: string) => void;
+  onSelectMember: (memberId: string | null) => void;
   onSelectWarriorType: (memberId: string, typeId: string) => void;
   onUpdateMember: (memberId: string, changes: Partial<Member>) => void;
   onRemoveMember: (memberId: string) => void;
@@ -105,6 +106,10 @@ export function MemberTable({
   const [dropTargetMemberId, setDropTargetMemberId] = useState<string | null>(null);
   const memberGroups = groupMembersByClass(members, warriorTypes, memberOrderCustomized);
 
+  function toggleMember(memberId: string) {
+    onSelectMember(memberId === activeMemberId ? null : memberId);
+  }
+
   function dropMember(event: React.DragEvent<HTMLTableRowElement>, targetMember: Member) {
     event.preventDefault();
     const draggedMember = members.find((member) => member.id === draggedMemberId);
@@ -150,7 +155,7 @@ export function MemberTable({
             <Fragment key={member.id}>
             <tr
               className={`${member.id === activeMemberId ? "selected-row" : ""}${member.id === dropTargetMemberId ? " drag-target" : ""}`}
-              onClick={() => onSelectMember(member.id)}
+              onClick={() => toggleMember(member.id)}
               onDragOver={(event) => {
                 const draggedMember = members.find((candidate) => candidate.id === draggedMemberId);
                 if (draggedMember?.role === member.role) {
@@ -164,8 +169,12 @@ export function MemberTable({
                 <button
                   className={`warrior-name${draggedMemberId === member.id ? " is-dragging" : ""}`}
                   type="button"
+                  aria-expanded={member.id === activeMemberId}
                   draggable={group.members.length > 1}
-                  onClick={() => onSelectMember(member.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleMember(member.id);
+                  }}
                   onDragStart={(event) => {
                     setDraggedMemberId(member.id);
                     event.dataTransfer.effectAllowed = "move";
@@ -179,6 +188,11 @@ export function MemberTable({
                   </span>
                   <span>
                     <strong>{member.name || "Unnamed warrior"}</strong>
+                    {member.injuryAvailability?.available === false && <small className="error-text">Injured · unavailable for battle</small>}
+                    {member.injuryAvailability?.needsOldWoundRoll && <small>Old battle wound · pre-battle roll needed</small>}
+                    {Boolean(member.injuryConditions?.length) && <small>
+                      {member.injuryConditions?.filter((condition) => condition.type !== "old-battle-check").map(injuryEffectLabel).join(" · ")}
+                    </small>}
                     {member.role === "Hero" && member.id === leaderId && <LeaderBadge />}
                     <small>{member.role}{member.role === "Henchman" ? ` group · ${member.groupSize}` : ""}</small>
                     {member.equipmentStatus?.valid === false && <small className="error-text">Incorrectly equipped · cannot enter battle</small>}

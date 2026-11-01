@@ -17,8 +17,6 @@ interface RosterSidebarProps {
   onSelectCampaign: (campaignId: string) => void;
   onCreateCampaign: (name: string, maxGc: number, rules: AdvancePurchaseRules, tradingRules: TradingRules) => Promise<boolean>;
   onJoinCampaign: (code: string) => Promise<boolean>;
-  username: string;
-  onLogout: () => void;
   campaignError: string;
 }
 
@@ -40,8 +38,6 @@ export function RosterSidebar({
   onSelectCampaign,
   onCreateCampaign,
   onJoinCampaign,
-  username,
-  onLogout,
   campaignError,
 }: RosterSidebarProps) {
   const [open, setOpen] = useState(false);
@@ -115,8 +111,6 @@ export function RosterSidebar({
       </form>
       <button className="new-roster-link" disabled={!canCreateRoster} onClick={onCreateRoster} type="button"><span>+</span> New warband</button>
       <CorrectionLauncher />
-      <div className="sidebar-footer sidebar-user"><span>{username}</span><button type="button" onClick={onLogout}>Log out</button></div>
-      <div className="sidebar-footer"><span className="status-dot" /> Postgres <span className="save-status">{saved ? "Saved" : "Saving"}</span></div>
       {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules, tradingRules) => {
         const created = await onCreateCampaign(name, maxGc, rules, tradingRules);
         if (created) setOpen(false);

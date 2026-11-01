@@ -5,6 +5,8 @@ import type { WarriorAdvancementsData } from "../types";
 import { PrintExperienceTrack } from "./experience/print-experience-track";
 import { fieldingSummary } from "../fielding-summary";
 import { gradeLabel } from "./source-rules";
+import { injuryEffectDescription, injuryEffectLabel } from "../injury-effects";
+import { Graveyard } from "./graveyard";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -184,6 +186,7 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
       </section>}
 
       {sheets.map((sheet) => <MemberCard key={sheet.member.id} sheet={sheet} />)}
+      {Boolean(roster.graveyard?.length) && <Graveyard entries={roster.graveyard} printable />}
 
       {(references.equipment.length > 0 || references.specialRules.length > 0 || references.skills.length > 0) && (
         <section className="print-reference">
@@ -281,6 +284,11 @@ function MemberCard({ sheet }: { sheet: MemberSheet }) {
         </div>
       </div>
       {member.notes && <p className="print-notes"><strong>Notes:</strong> {member.notes}</p>}
+      {member.injuryAvailability?.available === false && <p className="print-notes"><strong>Unavailable for battle due to injuries.</strong></p>}
+      {member.injuryConditions?.filter((condition) => condition.type !== "old-battle-check").map((condition, index) =>
+        <p className="print-notes" key={index}><strong>{injuryEffectLabel(condition)} (caused by {condition.name}):</strong> {injuryEffectDescription(condition)}
+          {condition.sourceReference && <small> {condition.sourceReference}</small>}
+        </p>)}
     </article>
   );
 }

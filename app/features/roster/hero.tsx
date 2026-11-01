@@ -11,6 +11,8 @@ import { RosterFields } from "./components/roster-fields";
 import { CampaignBar } from "./components/campaign-bar";
 import { apiBaseUrl, getToken, type AuthUser } from "../auth/auth";
 import { BattlePanel } from "./components/battle-panel";
+import { InjuryPanel, InjuryResultView } from "./components/injury-panel";
+import { Graveyard } from "./components/graveyard";
 import { RosterHeading } from "./components/roster-heading";
 import { RosterSidebar } from "./components/roster-sidebar";
 import { RosterPrintExport } from "./components/roster-print-export";
@@ -950,8 +952,6 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         onCreateCampaign={createCampaign}
         campaignError={error}
         onJoinCampaign={joinCampaign}
-        username={user.username}
-        onLogout={onLogout}
         activeRosterId={roster.id}
         saved={saved}
         onSelectRoster={(rosterId) => { setActiveRosterId(rosterId); setActiveMemberId(null); }}
@@ -960,7 +960,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       />
 
       <main className="workspace" id="roster">
-        <RosterTopbar loading={loading} saved={saved} />
+        <RosterTopbar loading={loading} saved={saved} username={user.username} onLogout={onLogout} />
 
         <div className="page-content">
           {error && <div className="api-error" role="alert">{error}<button type="button" onClick={() => window.location.reload()}>Retry connection</button></div>}
@@ -993,7 +993,14 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             {capacity && <CapacityPanel capacity={capacity} />}
             <RosterSummary roster={roster} heroes={heroes} henchmen={henchmen} hiredSwords={hiredSwords} />
           </section>
-          {roster.id && <WarbandTradingPanel key={roster.id} roster={roster} request={apiRequest} onChanged={refreshAfterTrading} onUpdateRoster={updateRoster} readOnly={readOnly} refreshVersion={tradingRefreshVersion} onDataChanged={onTradingDataChanged} />}
+          {roster.id && <WarbandTradingPanel key={`trading-${roster.id}`} roster={roster} request={apiRequest} onChanged={refreshAfterTrading} onUpdateRoster={updateRoster} readOnly={readOnly} refreshVersion={tradingRefreshVersion} onDataChanged={onTradingDataChanged} />}
+          {roster.injuryHistory?.some((entry) => entry.warrior_id === null) && <details className="advancement-panel">
+            <summary>Injury history for removed warriors</summary>
+            <div className="injury-cards">
+              {roster.injuryHistory.filter((entry) => entry.warrior_id === null).map((entry) =>
+                <InjuryResultView key={entry.id} result={entry.result} metadata={`${entry.warrior_name} · Battle ${entry.battle_number}`} />)}
+            </div>
+          </details>}
 
           <section className="roster-section">
             <div className="section-heading">
@@ -1063,6 +1070,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   warriorTypeOptionLabel={warriorTypeOptionLabel}
                   activeDetails={selectedMember ? (
                   <MemberDetailsPanel
+                  injuries={<InjuryPanel key={selectedMember.id} member={selectedMember} request={apiRequest}
+                    onChanged={refreshAfterTrading} readOnly={readOnly}
+                    refreshKey={`${roster.battlesFought}:${roster.campaign?.phase}:${roster.campaign?.step}:${selectedMember.groupSize}`} />}
                   allowedActions={roster.campaign?.allowedActions}
                   canAddGroupModel={!atMemberLimit && (!selectedWarriorType || !isWarriorTypeAtLimit(selectedWarriorType))}
                   onResizeGroup={resizeHenchmanGroup}
@@ -1118,6 +1128,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
               </div>
             )}
           </section>
+          {roster.id && roster.battlesFought > 0 && <Graveyard key={`graveyard-${roster.id}`} entries={roster.graveyard} readOnly={readOnly}
+            onRestore={async (entryId) => {
+              await apiRequest(`/rosters/${roster.id}/graveyard/${entryId}/restore`, "POST");
+              await refreshAfterTrading();
+            }} />}
           </fieldset>
           <footer className="page-footer"><span>MORDHEIM ROSTER LEDGER</span><span>KEEP YOUR WITS. KEEP YOUR RECORDS.</span></footer>
         </div>

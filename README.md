@@ -2,6 +2,41 @@
 
 React Router SPA with browser-side authentication and API requests.
 
+Click a warrior or henchman group row (or its name) to open its details.
+Click it again to collapse the details, or use the close button.
+Clicking another warrior or group switches to its details.
+
+The top-bar account icon shows the signed-in user's initial. Click it to see
+the username and **Log out** option. Escape or clicking outside dismisses
+the popup; account controls are also available on mobile.
+
+Injury tracking retains effects and their causes, not full-recovery outcomes.
+**Add injury** and **Resolve** open a modal for selection, secondary rolls and
+preview/confirmation. Cancel, Close or Escape discard an unapplied preview;
+the dialog remains open if cancellation fails. Keyboard focus stays within
+the modal and returns to the roster when it closes.
+Warrior rows identify current effects; details and the printable roster include
+gameplay references for Frenzy, Stupidity, fear and hatred. Injury stat modifiers
+are already applied to roster stats and should not be applied again in play.
+Multiple Injuries outcomes are stored as individual injury entries, not a nested
+group. Pit victories protect the XP total reached after the +2 XP award; XP
+controls cannot reduce below that minimum even after removing an advancement.
+
+For Bitter Enmity, enter the hatred target in the selection or preview, including
+simulated results. Campaign dropdowns use the latest played battle's opposing
+warbands, Heroes or leaders according to the secondary roll. Other/historical
+targets can be typed manually. The target is retained in roster gameplay rules
+and print output without rerolling the injury.
+
+The **Graveyard** lists all removed Heroes with their reason and battle number.
+Expand an entry to view its read-only full snapshot (stats, XP, equipment,
+skills, spells and notes). It is also included in PDF/print exports; archived
+Heroes and their gear do not count toward the active roster.
+The Graveyard is hidden during roster creation. **Undo removal** restores
+non-dead Heroes only before the battle counter changes and during hiring
+stages, subject to server-checked capacity and recruitment limits. Dismissals
+after roster creation give no hire-fee refund.
+
 ## Development
 
 ```sh

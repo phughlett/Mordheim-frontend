@@ -102,7 +102,47 @@ export interface HiredSwordEquipmentChoice {
   equipment: string;
 }
 
+export interface InjuryEffect {
+  type: string;
+  injuryId?: string;
+  name?: string;
+  ruleText?: string;
+  rule?: string;
+  stat?: StatLabel;
+  value?: number;
+  previousValue?: number;
+  currentValue?: number;
+  eye?: string;
+  count?: number;
+  untilBattle?: number;
+  cannotPerformActivities?: boolean;
+  target?: string;
+  targetDescription?: string;
+  gameplayName?: string;
+  gameplayRules?: string;
+  sourceReference?: string;
+}
+
+export interface InjuryResult {
+  hatredTarget?: string;
+  id: string;
+  name: string;
+  ruleText: string;
+  secondaryText?: string;
+  secondaryName?: string;
+  roll: number | null;
+  secondaryRoll?: number;
+  pending?: boolean;
+  eye?: string;
+  pitOutcome?: string;
+  captureOutcome?: string;
+  effects: InjuryEffect[];
+  children: InjuryResult[];
+}
+
 export interface Member {
+  injuryConditions?: InjuryEffect[];
+  injuryAvailability?: { available: boolean; needsOldWoundRoll: boolean };
   equipmentStatus?: GroupEquipment | null;
   specialRules?: SourceRule[];
   id: string;
@@ -297,6 +337,7 @@ export interface WarriorAdvancementsData {
   role: MemberRole;
   experience: number;
   lockedExperience: number;
+  injuryExperienceFloor?: number;
   pendingCount: number;
   minimumExperience: number;
   advanceTable: "Hero" | "Henchman";
@@ -600,7 +641,49 @@ export interface CampaignOption {
   advancePurchaseRules?: AdvancePurchaseRules;
 }
 
+export interface GraveyardEntry {
+  canRestore?: boolean;
+  restoreBlock?: string | null;
+  id: string;
+  original_warrior_id: string | null;
+  name: string;
+  reason: string;
+  battle_number: number;
+  removed_at: string;
+  snapshot_complete: boolean;
+  cause: InjuryResult | null;
+  snapshot: {
+    member: {
+      name: string;
+      typeName?: string | null;
+      type?: string;
+      stats?: Partial<Record<StatLabel, string | number>>;
+      experience?: number;
+      equipment?: string;
+      skills?: string;
+      notes?: string;
+      specialRules?: SourceRule[];
+      injury_conditions?: InjuryEffect[];
+    };
+    equipment: {
+      id: string;
+      name: string;
+      quantity: number;
+      unit_cost_paid: number;
+      equipment_definition?: { category?: string; source_reference?: string };
+      shop_definition?: { category?: string; description?: string };
+    }[];
+    skills: { id: string; name: string; category: string; description: string; source_reference: string; notes?: string }[];
+    spells: { id: string; name: string; discipline?: string; casting_difficulty: number | null;
+      difficulty_note?: string; effect_summary: string; notes?: string }[];
+    injuries: { id: string; battle_number: number; result: InjuryResult }[];
+  };
+}
+
 export interface Roster {
+  graveyard?: GraveyardEntry[];
+  injuryHistory?: { id: string; warrior_id: string | null; warrior_name: string; battle_number: number;
+    result: InjuryResult }[];
   ownerId?: string;
   player?: string;
   shareCode?: string | null;
