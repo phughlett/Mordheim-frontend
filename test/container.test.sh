@@ -27,6 +27,24 @@ curl --silent --show-error --fail "$base/application-route" > "$test_dir/fallbac
 cmp "$test_dir/index" "$test_dir/fallback"
 printf 'PASS: uncached HTML and SPA fallback\n'
 
+for path in /app /app/ '/app?share=test%20code'; do
+    status=$(curl --silent --show-error -D "$test_dir/headers" -o "$test_dir/app" \
+        -w '%{http_code}' -H 'Host: mordheim.hughlett.org' \
+        -H 'X-Forwarded-Proto: https' "$base$path")
+    test "$status" = 200
+    if grep -qi '^Location:' "$test_dir/headers"; then
+        printf 'FAIL: %s redirected behind the HTTPS proxy\n' "$path" >&2
+        exit 1
+    fi
+    grep -q 'name="robots" content="noindex, nofollow"' "$test_dir/app"
+    if [[ "$path" == /app ]]; then
+        cp "$test_dir/app" "$test_dir/app-index"
+    else
+        cmp "$test_dir/app-index" "$test_dir/app"
+    fi
+done
+printf 'PASS: app and share URLs serve private app HTML without proxy redirects\n'
+
 asset=$(grep -oE '/assets/[^"]+\.js' "$test_dir/index" | head -1)
 curl --silent --show-error --fail -D "$test_dir/headers" "$base$asset" > /dev/null
 grep -qi '^Cache-Control: public, max-age=31536000, immutable' "$test_dir/headers"

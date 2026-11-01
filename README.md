@@ -104,6 +104,8 @@ The API URL is baked into the build; changing it requires rebuilding the image.
 
 - `/healthz` for container health checks.
 - Uncached HTML so clients receive the current asset references after deployment.
+- Direct serving of `/app` without a directory redirect; other Nginx redirects
+  use relative URLs to preserve the external HTTPS origin behind the proxy.
 - One-year immutable caching for fingerprinted `/assets/` files.
 - SPA fallback for application URLs and real 404s for missing assets/API paths.
 
@@ -116,5 +118,6 @@ Run the isolated container smoke test after building an image:
 bash test/container.test.sh mordheim-frontend
 ```
 
-It checks non-root execution, health, caching, SPA fallback, and missing-resource
-404s using a temporary container and random loopback port.
+It checks non-root execution, health, caching, SPA fallback, app/share URLs behind
+an HTTPS proxy, and missing-resource 404s using a temporary container and random
+loopback port.
