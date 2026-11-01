@@ -4,6 +4,7 @@ import { WarbandCurrency } from "./roster-fields";
 import { defaultMapInput, mapSelection, MapResult, MordheimMapControls, UnresolvedMap, type MapInput } from "./mordheim-map-controls";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
+type RefundableInventoryEntry = InventoryEntry & { canRefund?: boolean; canCancelUpgrade?: boolean };
 
 function diceLabel(dice: number[]) {
   return dice.length ? dice.join(", ") : "no dice";
@@ -167,7 +168,7 @@ export function CombatSpoils({ campaign, item, enabled, onAdd }: {
 }
 
 export function StashItem({ entry, roster, enabled, onSend, canSell = false, onSell, mapControls }: {
-  entry: InventoryEntry;
+  entry: RefundableInventoryEntry;
   roster: Roster;
   enabled: boolean;
   onSend: (entryId: string, memberId: string, quantity: number, modelIndex: number, fillMissing?: boolean) => Promise<void>;
@@ -214,11 +215,11 @@ export function StashItem({ entry, roster, enabled, onSend, canSell = false, onS
     {!recipients.length && <small>No warriors in this warband can use this item.</small>}
     {perModel && <small>Requires {quantity * member.groupSize} copies for all {member.groupSize} models.</small>}
     {missingCopies > 0 && <small>Complete group equipment only fills missing copies; already equipped models keep their items.</small>}
-    {onSell && entry.unitSaleValue != null && !entry.saleRestriction && <div className="trading-inline">
+    {onSell && entry.unitSaleValue != null && (entry.canRefund || !entry.saleRestriction) && <div className="trading-inline">
       <label className="equipment-field"><span>SELL QUANTITY</span><input aria-label={`Sell quantity for ${entry.name}`} type="number" min={1} max={Math.min(1000, entry.quantity)}
         value={saleQuantity} disabled={!canSell} onChange={(event) => setSaleQuantity(Math.max(1, Math.min(1000, entry.quantity, Math.floor(Number(event.target.value) || 1))))} /></label>
       <button className="outline-button" type="button" disabled={!canSell || saleQuantity > entry.quantity}
-        onClick={() => void onSell(entry.id, saleQuantity)}>Sell ×{saleQuantity} · {entry.unitSaleValue * saleQuantity} GC</button>
+        onClick={() => void onSell(entry.id, saleQuantity)}>{entry.canRefund ? "Refund" : "Sell"} ×{saleQuantity} · {entry.unitSaleValue * saleQuantity} GC</button>
     </div>}
     {entry.saleRestriction && <small>{entry.saleRestriction}</small>}
   </li>;
@@ -515,6 +516,24 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
       await onChanged();
     });
   }
+  async function refundMember(entry: RefundableInventoryEntry) {
+    await act(async () => {
+      const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/sell`, "POST", {
+        source: "member", inventoryIds: [entry.id],
+      });
+      if (rosterIdRef.current === roster.id) setData(refreshed);
+      await onChanged();
+    });
+  }
+  async function cancelUpgrade(entry: RefundableInventoryEntry) {
+    await act(async () => {
+      const refreshed = await request<TradingData>(`/rosters/${roster.id}/trading/cancel-upgrade`, "POST", {
+        inventoryId: entry.id,
+      });
+      if (rosterIdRef.current === roster.id) setData(refreshed);
+      await onChanged();
+    });
+  }
   return (
     <section className="warband-trading" aria-label="Warband stash and trading">
       <div className="section-heading">
@@ -630,10 +649,10 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
           </div>
           <div className="trading-block">
             <h3>Stash · {data.stash.length} stack{data.stash.length === 1 ? "" : "s"}</h3>
-            {data.stash.length ? <ul className="trading-inventory">{data.stash.map((entry) => <StashItem key={entry.id} entry={entry} roster={roster} enabled={actionsEnabled && data.canTransfer} onSend={transfer} canSell={actionsEnabled && data.canSell} onSell={sellStash}
+            {data.stash.length ? <ul className="trading-inventory">{data.stash.map((entry) => <StashItem key={entry.id} entry={entry} roster={roster} enabled={actionsEnabled && data.canTransfer} onSend={transfer} canSell={actionsEnabled && (data.canSell || Boolean((entry as RefundableInventoryEntry).canRefund))} onSell={sellStash}
               mapControls={<UnresolvedMap entry={entry} types={data.shop.find((item) => item.id === "mordheim-map")?.mapTypes ?? []} enabled={actionsEnabled && (data.canTransfer || data.canPurchase)} onResolve={(input) => resolveMap(entry, "stash", input)} />}
             />)}</ul> : <p className="equipment-state">The stash is empty.</p>}
-            {data.canSell && <p className="trading-note">Sales pay half the listed base price, rounded down per item. Variable-price dice and amounts paid are not refunded.</p>}
+            {data.canSell && <p className="trading-note">Ordinary sales pay half the listed base price, rounded down per item. Gear bought at the current battle count can be canceled for its actual price until that count changes.</p>}
             {!data.canTransfer && <p className="trading-note">Transfers are not available at this campaign stage.</p>}
           </div>
         </div>
@@ -641,6 +660,23 @@ export function WarbandTradingPanel({ roster, request, onChanged, onUpdateRoster
         <div className="trading-block">
           <h3>Assigned equipment</h3>
           <AssignedEquipment entries={data.memberInventory} members={roster.members} />
+          {data.memberInventory.some((entry) => (entry as RefundableInventoryEntry).canRefund) && <ul className="trading-inventory">
+            {data.memberInventory.filter((entry) => (entry as RefundableInventoryEntry).canRefund)
+              .map((entry) => {
+                const refundable = entry as RefundableInventoryEntry;
+                const owner = roster.members.find((member) => member.id === entry.memberId)?.name ?? "warrior";
+                return <li key={`refund-${entry.id}`}>
+                  <strong>{entry.name} · {owner}</strong>
+                  <span>{entry.unitCostPaid} GC paid each · {refundable.unitSaleValue} GC refundable each</span>
+                  <button className="outline-button" type="button" disabled={!actionsEnabled}
+                    onClick={() => void (refundable.canCancelUpgrade ? cancelUpgrade(refundable) : refundMember(refundable))}>
+                    {refundable.canCancelUpgrade
+                      ? `Cancel poison upgrade · ${refundable.unitSaleValue} GC`
+                      : `Refund ×${entry.quantity} · ${(refundable.unitSaleValue ?? 0) * entry.quantity} GC`}
+                  </button>
+                </li>;
+              })}
+          </ul>}
           {data.memberInventory.filter((entry) => entry.shopItemId === "mordheim-map").map((entry) => <div key={entry.id}>
             <strong>{entry.name} · {roster.members.find((member) => member.id === entry.memberId)?.name}</strong>
             <MapResult entry={entry} />

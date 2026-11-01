@@ -125,8 +125,8 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
               <p className="skills-learned-description">{skill.description}</p>
               {skill.purchaseCost != null && <small>Purchased · {skill.purchaseCost} GC · forgetting refunds the latest purchase during roster creation.</small>}
             </div>
-            <button className="skills-forget-button" type="button" disabled={forgettingId !== null || skill.isStarting || skill.isLeaderAbility} aria-label={skill.isLeaderAbility ? `${skill.name} is granted while leading` : skill.isStarting ? `${skill.name} is a starting ability` : `Forget ${skill.name}`} onClick={() => void forgetLearnedSkill(skill.warriorSkillId)}>
-              {skill.isLeaderAbility ? "Leader" : skill.isStarting ? "Starting" : forgettingId === skill.warriorSkillId ? "Forgetting..." : "Forget"}
+            <button className="skills-forget-button" type="button" disabled={forgettingId !== null || skill.isStarting || skill.isLeaderAbility || skill.canForget === false} aria-label={skill.isLeaderAbility ? `${skill.name} is granted while leading` : skill.isStarting ? `${skill.name} is a starting ability` : `Forget ${skill.name}`} onClick={() => void forgetLearnedSkill(skill.warriorSkillId)}>
+              {skill.isLeaderAbility ? "Leader" : skill.isStarting ? "Starting" : skill.canForget === false ? "Fixed" : forgettingId === skill.warriorSkillId ? "Forgetting..." : "Forget"}
             </button>
           </div>
         )) : <p className="skills-state">No skills learned yet.</p>}

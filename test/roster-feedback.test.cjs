@@ -32,12 +32,13 @@ const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, RitualP
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
 const { MordheimMapControls, MapResult, UnresolvedMap, mapSelection } = require("../app/features/roster/components/mordheim-map-controls.tsx");
 const { SpellPanel } = require("../app/features/roster/components/spell-panel.tsx");
+const { ConsumedTomeCorrections } = require("../app/features/roster/components/consumed-tome-corrections.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
 const { SkillsPanel } = require("../app/features/roster/components/skills-panel.tsx");
 const { RosterFields, WarbandCurrency } = require("../app/features/roster/components/roster-fields.tsx");
 const { RosterHeading } = require("../app/features/roster/components/roster-heading.tsx");
 const { MemberTable } = require("../app/features/roster/components/member-table.tsx");
-const { InjuryPanel, InjuryChoice, InjuryResultView, HatredTargetField, hatredTargets } = require("../app/features/roster/components/injury-panel.tsx");
+const { InjuryPanel, InjuryChoice, InjuryResultView, HatredTargetField, hatredTargets, RemoveInjuryButton } = require("../app/features/roster/components/injury-panel.tsx");
 const { Graveyard } = require("../app/features/roster/components/graveyard.tsx");
 const { fieldingSummary } = require("../app/features/roster/fielding-summary.ts");
 const { RosterSummary } = require("../app/features/roster/components/roster-summary.tsx");
@@ -166,6 +167,28 @@ test("injury panel gates Add injury, supports a cancellable preview and read-onl
     const failed = withState([data, true, {}, 0, undefined, null, "Preview failed"]);
     assert.match(failed, /<dialog[\s\S]*role="alert" class="skills-error">Preview failed/);
   } finally { React.useState = originalUseState; }
+});
+
+test("injury correction controls appear only on eligible owner records, never read-only or printed cards", () => {
+  const originalUseState = React.useState;
+  const result = { id: "leg-wound", name: "LEG WOUND", roll: 22, effects: [], children: [] };
+  const props = { rosterId: "roster", member: { id: "hero", role: "Hero", groupSize: 1 },
+    request: async () => {}, onChanged: async () => {}, refreshKey: "1" };
+  function panel(canRemove, readOnly) {
+    let index = 0;
+    React.useState = (initial) => originalUseState(index++ === 0 ? {
+      table: injuryTestTable, heroTable: injuryTestTable, canAdd: true, conditions: [], availability: {},
+      history: [{ id: "injury", canRemove, pending: false, battle_number: 1, model_index: 0, mode: "manual", result }],
+    } : initial);
+    return render(InjuryPanel, { ...props, readOnly });
+  }
+  try {
+    assert.match(panel(true, false), />Remove injury<\/button>/);
+    assert.doesNotMatch(panel(false, false), />Remove injury<\/button>/);
+    assert.doesNotMatch(panel(true, true), />Remove injury<\/button>/);
+  } finally { React.useState = originalUseState; }
+  assert.match(render(RemoveInjuryButton, { ...props, injuryId: "injury" }), />Remove injury<\/button>/);
+  assert.doesNotMatch(render(InjuryResultView, { result }), /Remove injury/);
 });
 
 test("injury result cards retain nested outcomes, metadata and exact paragraph breaks", () => {
@@ -488,6 +511,41 @@ test("post-battle member sales show listed resale prices instead of paid-cost re
   assert.match(html, /Sell ×2 · 200 GC/);
   assert.doesNotMatch(html, /412 GC/);
   assert.doesNotMatch(render(EquipmentInventoryPanel, { ...props, data: { ...props.data, canSell: false } }), /Sell ×/);
+});
+
+test("current assigned purchases offer full cancellation even while ordinary campaign sales are unavailable", () => {
+  const html = render(EquipmentInventoryPanel, { member: { id: "hero", role: "Hero", groupSize: 1 },
+    treasury: "0", loading: false, error: "", purchaseLocked: true,
+    data: { availableOptions: [], recruitmentRefund: false, canSell: false, mutations: { eligible: false },
+      inventory: [{ id: "book", equipmentOptionId: "tome-of-magic", shopItemId: "tome-of-magic", name: "Tome of Magic",
+        category: "misc", modelIndex: 0, quantity: 1, unitCostPaid: 285, unitSaleValue: 285, canRefund: true, stats: null }] } });
+  assert.match(html, /Cancel purchase ×1 · 285 GC/);
+  assert.match(html, /Refund: 285 GC/);
+  assert.doesNotMatch(html, /Sales are unavailable/);
+});
+
+test("skill and spell forget controls are fixed only after their counter changes", () => {
+  const skill = { id: "skill", warriorSkillId: "choice", name: "Sprint", category: "Speed", description: "", canForget: true };
+  const props = { member: { role: "Hero" }, loading: false, error: "",
+    data: { learnedSkills: [skill], eligibility: [], availableSkills: [], pendingSkillAdvances: [] } };
+  assert.match(render(SkillsPanel, props), /aria-label="Forget Sprint"[^>]*>Forget<\/button>/);
+  assert.match(render(SkillsPanel, { ...props, data: { ...props.data, learnedSkills: [{ ...skill, canForget: false }] } }),
+    /disabled="" aria-label="Forget Sprint"[^>]*>Fixed<\/button>/);
+  const spellProps = { member: { id: "wizard", role: "Hero" }, loading: false, error: "",
+    data: { canShowSpellSection: true, hasSpellcastingProfile: true, knownSpells: [{ warriorSpellId: "spell",
+      name: "Fireball", disciplineName: "Lesser Magic", acquisitionMethod: "advance", canForget: true }],
+      availableDisciplines: [], disciplineChoices: [], tomeInventory: [], startingSpellsRemaining: 0 } };
+  assert.match(render(SpellPanel, spellProps), /class="skills-forget-button" type="button">Forget<\/button>/);
+  assert.match(render(SpellPanel, { ...spellProps, data: { ...spellProps.data,
+    knownSpells: [{ ...spellProps.data.knownSpells[0], canForget: false }] } }),
+    /class="skills-forget-button" type="button" disabled="">Fixed<\/button>/);
+});
+
+test("consumed Tome correction exposes a paid refund or item restoration, never a locked use", () => {
+  const props = { memberId: "hero", uses: [{ id: "use", canCancel: true, refundAmount: 285 }] };
+  assert.match(render(ConsumedTomeCorrections, props), /Cancel Tome purchase · refund 285 GC/);
+  assert.match(render(ConsumedTomeCorrections, { ...props, uses: [{ ...props.uses[0], refundAmount: null }] }), /Undo Tome use · restore item/);
+  assert.equal(render(ConsumedTomeCorrections, { ...props, uses: [{ ...props.uses[0], canCancel: false }] }), "");
 });
 
 test("graded shop filters cover all six categories and compose with grades without mutating data", () => {

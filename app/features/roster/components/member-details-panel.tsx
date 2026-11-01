@@ -51,7 +51,7 @@ interface MemberDetailsPanelProps {
   onForgetSkill: (memberId: string, warriorSkillId: string) => Promise<void>;
   onRecordAdvance: (input: RecordAdvanceInput) => Promise<boolean>;
   onPurchaseAdvance: (input: PurchaseAdvanceInput) => Promise<boolean>;
-  onRemoveAdvance: (advanceId: string) => Promise<boolean>;
+  onRemoveAdvance: (advanceId: string, resetChoice?: boolean) => Promise<boolean>;
   onLearnSpell: (input: LearnSpellInput) => Promise<boolean>;
   onRollSpells: (disciplineId: string, count: 1 | 2) => Promise<SpellRollResponse | null>;
   onForgetSpell: (warriorSpellId: string) => Promise<boolean>;

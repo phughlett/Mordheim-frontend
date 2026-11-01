@@ -11,6 +11,17 @@ the username and **Log out** option. Escape or clicking outside dismisses
 the popup; account controls are also available on mobile.
 
 Injury tracking retains effects and their causes, not full-recovery outcomes.
+Between battles, newly selected skills, spells and advancement outcomes remain
+correctable until the battle counter changes; fixed choices show **Fixed**.
+Removing a spell releases its linked advance, and current spell-difficulty
+reductions have an undo action. Innate starting skills remain fixed.
+Current gear purchases show **Cancel purchase** and refund the complete amount
+paid, including items assigned to warriors. Older purchases retain ordinary
+resale rules. Cancelling a consumed Tome removes its gained spells and releases
+their advances; current paid Tomes refund in full, while older Tomes are restored
+to inventory. Campaign correction actions do not depend on the current stage.
+Legacy records without trustworthy counters cannot be corrected.
+
 **Add injury** and **Resolve** open a modal for selection, secondary rolls and
 preview/confirmation. Cancel, Close or Escape discard an unapplied preview;
 the dialog remains open if cancellation fails. Keyboard focus stays within
@@ -21,6 +32,15 @@ are already applied to roster stats and should not be applied again in play.
 Multiple Injuries outcomes are stored as individual injury entries, not a nested
 group. Pit victories protect the XP total reached after the +2 XP award; XP
 controls cannot reduce below that minimum even after removing an advancement.
+
+**Remove injury** corrects an accidental injury before the battle counter changes,
+reversing stats, conditions, protected XP, gold and equipment effects. Accidental
+casualty injuries can be corrected from removed-warrior injury history, including
+deaths and Henchman model losses, with capacity/type-limit validation.
+Dependent stat, XP/advancement or replacement-equipment changes must be undone
+first; errors explain what blocks correction. Older injuries without saved
+correction snapshots remain read-only. Shared views and PDFs have no correction
+controls. This is separate from the non-death Graveyard **Undo removal** action.
 
 For Bitter Enmity, enter the hatred target in the selection or preview, including
 simulated results. Campaign dropdowns use the latest played battle's opposing

@@ -329,7 +329,7 @@ export function SpellPanel({
                 <p className="skills-learned-description">{formatDifficulty(spell, data?.castingRollBonus ?? 0)}</p>
               </div>
               <div className="spell-known-actions">
-                <button className="skills-forget-button" type="button" disabled={busySpellId !== null || spell.acquisitionMethod === "advance"} onClick={() => void updateKnownSpell(spell, "forget")}>{spell.acquisitionMethod === "advance" ? "Via advance" : "Forget"}</button>
+                <button className="skills-forget-button" type="button" disabled={busySpellId !== null || spell.canForget === false} onClick={() => void updateKnownSpell(spell, "forget")}>{spell.canForget === false ? "Fixed" : "Forget"}</button>
               </div>
             </div>
           )) : <p className="skills-state">No spells recorded yet.</p>}

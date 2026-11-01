@@ -8,7 +8,7 @@ interface AdvancementPanelProps {
   loading: boolean;
   error: string;
   onRecordAdvance: (input: RecordAdvanceInput) => Promise<boolean>;
-  onRemoveAdvance: (advanceId: string) => Promise<boolean>;
+  onRemoveAdvance: (advanceId: string, resetChoice?: boolean) => Promise<boolean>;
   onPurchaseAdvance: (input: PurchaseAdvanceInput) => Promise<boolean>;
   treasury: string;
   leading?: ReactNode;
@@ -57,10 +57,10 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
     }
   }
 
-  async function removeAdvance(advanceId: string) {
+  async function removeAdvance(advanceId: string, resetChoice?: boolean) {
     setRemovingAdvanceId(advanceId);
     try {
-      await onRemoveAdvance(advanceId);
+      await onRemoveAdvance(advanceId, resetChoice);
     } finally {
       setRemovingAdvanceId(null);
     }
@@ -163,6 +163,8 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
                   <strong>{advance.roll ? `2D6 ${advance.roll}${advance.secondaryRoll ? ` · D6 ${advance.secondaryRoll}` : ""} · ` : ""}{advanceDescription(advance)}</strong>
                   {advance.purchaseCost !== null && <small>Purchased · {advance.purchaseCost} GC · XP {advance.experienceBeforePurchase} → {advance.experienceThreshold}</small>}
                   {advance.consumedAt && <small>Used for promotion</small>}
+                  {advance.canResetChoice && <button className="skills-forget-button" type="button" disabled={actionInProgress}
+                    onClick={() => void removeAdvance(advance.id, true)}>Undo spell difficulty choice</button>}
                   {advance.canRemove && (
                     <button
                       className="advancement-remove-button"

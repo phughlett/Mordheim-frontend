@@ -11,8 +11,9 @@ import { RosterFields } from "./components/roster-fields";
 import { CampaignBar } from "./components/campaign-bar";
 import { apiBaseUrl, getToken, type AuthUser } from "../auth/auth";
 import { BattlePanel } from "./components/battle-panel";
-import { InjuryPanel, InjuryResultView } from "./components/injury-panel";
+import { InjuryPanel, InjuryResultView, RemoveInjuryButton } from "./components/injury-panel";
 import { Graveyard } from "./components/graveyard";
+import { ConsumedTomeCorrections } from "./components/consumed-tome-corrections";
 import { RosterHeading } from "./components/roster-heading";
 import { RosterSidebar } from "./components/roster-sidebar";
 import { RosterPrintExport } from "./components/roster-print-export";
@@ -566,7 +567,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       const skills = await apiRequest<WarriorSkillsData>(`/members/${memberId}/skills`, "POST", { skillId, advanceId });
       setMemberSkills(skills);
-      setMemberAdvancements(await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances`));
+      await refreshAfterTrading();
     } catch (requestError) {
       setSkillsError(requestError instanceof Error ? requestError.message : "Could not learn this skill.");
     }
@@ -577,8 +578,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     try {
       const skills = await apiRequest<WarriorSkillsData>(`/members/${memberId}/skills/${warriorSkillId}`, "DELETE");
       setMemberSkills(skills);
-      setMemberAdvancements(await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances`));
-      replaceRoster(await apiRequest<Roster>(`/rosters/${roster.id}`));
+      await refreshAfterTrading();
     } catch (requestError) {
       setSkillsError(requestError instanceof Error ? requestError.message : "Could not forget this skill.");
     }
@@ -623,6 +623,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     setSpellsError("");
     try {
       setMemberSpells(await apiRequest<WarriorSpellsData>(`/members/${memberId}/spells/${warriorSpellId}`, "DELETE"));
+      setMemberAdvancements(await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances`));
       return true;
     } catch (requestError) {
       setSpellsError(requestError instanceof Error ? requestError.message : "Could not forget this spell.");
@@ -695,10 +696,10 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     }
   }
 
-  async function removeMemberAdvance(memberId: string, advanceId: string) {
+  async function removeMemberAdvance(memberId: string, advanceId: string, resetChoice?: boolean) {
     setAdvancementsError("");
     try {
-      const advancements = await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances/${advanceId}`, "DELETE");
+      const advancements = await apiRequest<WarriorAdvancementsData>(`/members/${memberId}/advances/${advanceId}${resetChoice ? "/choice" : ""}`, "DELETE");
       setMemberAdvancements(advancements);
       setMemberSkills(await apiRequest<WarriorSkillsData>(`/members/${memberId}/skills`));
       setMemberSpells(await apiRequest<WarriorSpellsData>(`/members/${memberId}/spells`));
@@ -998,7 +999,9 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             <summary>Injury history for removed warriors</summary>
             <div className="injury-cards">
               {roster.injuryHistory.filter((entry) => entry.warrior_id === null).map((entry) =>
-                <InjuryResultView key={entry.id} result={entry.result} metadata={`${entry.warrior_name} · Battle ${entry.battle_number}`} />)}
+                <InjuryResultView key={entry.id} result={entry.result} metadata={`${entry.warrior_name} · Battle ${entry.battle_number}`}
+                  actions={!readOnly && entry.canRemove && <RemoveInjuryButton rosterId={roster.id} injuryId={entry.id}
+                    request={apiRequest} onChanged={refreshAfterTrading} />} />)}
             </div>
           </details>}
 
@@ -1070,9 +1073,12 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   warriorTypeOptionLabel={warriorTypeOptionLabel}
                   activeDetails={selectedMember ? (
                   <MemberDetailsPanel
-                  injuries={<InjuryPanel key={selectedMember.id} member={selectedMember} request={apiRequest}
+                  injuries={<>
+                  {!readOnly && <ConsumedTomeCorrections key={`tome-${selectedMember.id}`} memberId={selectedMember.id}
+                    uses={memberSpells?.consumedTomes} request={apiRequest} onChanged={refreshAfterTrading} />}
+                  <InjuryPanel key={selectedMember.id} member={selectedMember} rosterId={roster.id} request={apiRequest}
                     onChanged={refreshAfterTrading} readOnly={readOnly}
-                    refreshKey={`${roster.battlesFought}:${roster.campaign?.phase}:${roster.campaign?.step}:${selectedMember.groupSize}`} />}
+                    refreshKey={`${roster.battlesFought}:${roster.campaign?.phase}:${roster.campaign?.step}:${selectedMember.groupSize}`} /></>}
                   allowedActions={roster.campaign?.allowedActions}
                   canAddGroupModel={!atMemberLimit && (!selectedWarriorType || !isWarriorTypeAtLimit(selectedWarriorType))}
                   onResizeGroup={resizeHenchmanGroup}
@@ -1112,7 +1118,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
                   onForgetSkill={forgetSkill}
                   onRecordAdvance={(input) => recordMemberAdvance(selectedMember.id, input)}
                   onPurchaseAdvance={(input) => purchaseAdvance(selectedMember.id, input)}
-                  onRemoveAdvance={(advanceId) => removeMemberAdvance(selectedMember.id, advanceId)}
+                  onRemoveAdvance={(advanceId, resetChoice) => removeMemberAdvance(selectedMember.id, advanceId, resetChoice)}
                   onLearnSpell={(input) => learnSpell(selectedMember.id, input)}
                   onRollSpells={(disciplineId, count) => rollSpells(selectedMember.id, disciplineId, count)}
                   onForgetSpell={(warriorSpellId) => forgetSpell(selectedMember.id, warriorSpellId)}

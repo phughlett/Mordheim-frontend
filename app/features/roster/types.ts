@@ -191,6 +191,7 @@ export interface WarriorAdvance {
   createdAt: string;
   consumedAt: string | null;
   canRemove: boolean;
+  canResetChoice?: boolean;
   purchaseCost: number | null;
   experienceBeforePurchase: number | null;
 }
@@ -258,6 +259,8 @@ export interface TradingRules {
 }
 
 export interface InventoryEntry {
+  canRefund?: boolean;
+  canCancelUpgrade?: boolean;
   stackKey?: string;
   id: string;
   name: string;
@@ -334,6 +337,7 @@ export interface AdvancePurchaseOptions {
 }
 
 export interface WarriorAdvancementsData {
+  canRevise?: boolean;
   role: MemberRole;
   experience: number;
   lockedExperience: number;
@@ -432,6 +436,8 @@ export interface EquipmentOption {
 }
 
 export interface WarriorInventoryItem {
+  canRefund?: boolean;
+  canCancelUpgrade?: boolean;
   stackKey?: string;
   id: string;
   equipmentOptionId: string;
@@ -482,6 +488,7 @@ export interface SkillOption {
 }
 
 export interface LearnedSkill extends SkillOption {
+  canForget?: boolean;
   warriorSkillId: string;
   acquiredAt: string | null;
   isLeaderAbility?: boolean;
@@ -549,6 +556,7 @@ export interface SpellDisciplineChoice {
 }
 
 export interface KnownSpell {
+  canForget?: boolean;
   warriorSpellId: string;
   spellId: string | null;
   disciplineId: string | null;
@@ -568,6 +576,7 @@ export interface KnownSpell {
 }
 
 export interface WarriorSpellsData {
+  consumedTomes?: { id: string; canCancel: boolean; refundAmount: number | null }[];
   role: MemberRole;
   warriorTypeName: string | null;
   hasSpellcastingProfile: boolean;
@@ -609,6 +618,7 @@ export interface MagicTomeInventoryItem {
 }
 
 export interface LadsGotTalentOptions {
+  canChange?: boolean;
   options: SkillCategoryChoice[];
   selected: SkillCategoryChoice[];
 }
@@ -682,7 +692,7 @@ export interface GraveyardEntry {
 
 export interface Roster {
   graveyard?: GraveyardEntry[];
-  injuryHistory?: { id: string; warrior_id: string | null; warrior_name: string; battle_number: number;
+  injuryHistory?: { id: string; canRemove?: boolean; warrior_id: string | null; warrior_name: string; battle_number: number;
     result: InjuryResult }[];
   ownerId?: string;
   player?: string;

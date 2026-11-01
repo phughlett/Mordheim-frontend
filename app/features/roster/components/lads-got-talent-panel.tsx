@@ -53,23 +53,24 @@ export function LadsGotTalentPanel({ options, loading, error, onSave }: LadsGotT
       <div className="lads-got-talent-selects">
         <label className="skills-field">
           <span>LIST 1</span>
-          <select value={firstKey} onChange={(event) => setFirstKey(event.target.value)}>
+          <select disabled={options?.canChange === false} value={firstKey} onChange={(event) => setFirstKey(event.target.value)}>
             <option value="">Choose list</option>
             {choices.map((choice) => <option key={choiceKey(choice)} value={choiceKey(choice)} disabled={choiceKey(choice) === secondKey}>{choiceLabel(choice)}</option>)}
           </select>
         </label>
         <label className="skills-field">
           <span>LIST 2</span>
-          <select value={secondKey} onChange={(event) => setSecondKey(event.target.value)}>
+          <select disabled={options?.canChange === false} value={secondKey} onChange={(event) => setSecondKey(event.target.value)}>
             <option value="">Choose list</option>
             {choices.map((choice) => <option key={choiceKey(choice)} value={choiceKey(choice)} disabled={choiceKey(choice) === firstKey}>{choiceLabel(choice)}</option>)}
           </select>
         </label>
       </div>
-      <button className="promotion-button" type="button" disabled={!firstKey || !secondKey || firstKey === secondKey || saving} onClick={() => void save()}>
+      <button className="promotion-button" type="button" disabled={options?.canChange === false || !firstKey || !secondKey || firstKey === secondKey || saving} onClick={() => void save()}>
         {saving ? "Saving..." : selected.length === 2 ? "Update skill lists" : "Confirm skill lists"}
       </button>
       {error && <p className="skills-error" role="alert">{error}</p>}
+      {options?.canChange === false && <p className="skills-state">These skill lists are fixed after the next battle.</p>}
     </div>
   );
 }

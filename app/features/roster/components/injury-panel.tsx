@@ -35,9 +35,29 @@ interface InjuryData {
   canCheckOldWound: boolean;
   availability: { available: boolean; needsOldWoundRoll: boolean };
   conditions: InjuryEffect[];
-  history: { id: string; pending: boolean; battle_number: number; model_index: number; mode: string; result: InjuryResult }[];
+  history: { id: string; canRemove?: boolean; pending: boolean; battle_number: number; model_index: number; mode: string; result: InjuryResult }[];
 }
 interface Preview { id: string; result: InjuryResult; modelIndex: number; battleNumber: number }
+
+export function RemoveInjuryButton({ rosterId, injuryId, request, onChanged }: {
+  rosterId: string; injuryId: string;
+  request: <T>(path: string, method?: string, body?: unknown) => Promise<T>; onChanged: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return <div>
+    <button className="outline-button" type="button" disabled={busy} onClick={async () => {
+      if (!window.confirm("Remove this injury and reverse its effects? This corrects an accidental injury; it is not a new injury roll.")) return;
+      setBusy(true); setError("");
+      try {
+        await request(`/rosters/${rosterId}/injuries/${injuryId}`, "DELETE");
+        await onChanged();
+      } catch (error) { setError(error instanceof Error ? error.message : "Could not remove this injury."); }
+      finally { setBusy(false); }
+    }}>{busy ? "Removing..." : "Remove injury"}</button>
+    {error && <p className="skills-error" role="alert">{error}</p>}
+  </div>;
+}
 
 interface HatredOpponent {
   name: string;
@@ -165,8 +185,9 @@ export function InjuryResultView({ result, metadata, actions, applied = true, on
   </article>;
 }
 
-export function InjuryPanel({ member, request, onChanged, readOnly = false, refreshKey }: {
+export function InjuryPanel({ member, rosterId, request, onChanged, readOnly = false, refreshKey }: {
   member: Member;
+  rosterId?: string;
   request: <T>(path: string, method?: string, body?: unknown) => Promise<T>;
   onChanged: () => Promise<void>;
   readOnly?: boolean;
@@ -225,6 +246,10 @@ export function InjuryPanel({ member, request, onChanged, readOnly = false, refr
       }}>Add injury</button>}
     </div>
     {error && !open && <p role="alert" className="skills-error">{error}</p>}
+    {!readOnly && Boolean(data?.history.length) && <p className="advancement-rules">
+      Remove injury corrects a mistake and reverses its effects before the battle counter changes.
+      Dependent changes must be undone first. Older records without correction snapshots cannot be removed safely.
+    </p>}
     {Boolean(data?.conditions?.length) && <div className="injury-cards" aria-label="Current injury effects">
       {data?.conditions.filter((condition) => condition.type !== "old-battle-check").map((condition, index) =>
         <article className="skills-detail injury-card" key={index}>
@@ -291,10 +316,14 @@ export function InjuryPanel({ member, request, onChanged, readOnly = false, refr
     {Boolean(data?.history.length) && <div className="injury-cards" aria-label="Recorded injuries">
       {data?.history.map((entry) => <InjuryResultView key={entry.id} result={entry.result}
         metadata={`Battle ${entry.battle_number} · ${entry.mode}${member.role === "Henchman" ? ` · Model ${entry.model_index + 1} at time of injury` : ""}${entry.pending ? " · Pending" : ""}`}
-        actions={entry.pending && data.canAdd && <button className="outline-button" type="button" disabled={disabled || open} onClick={(event) => {
+        actions={<>
+        {!readOnly && entry.canRemove && rosterId && <RemoveInjuryButton rosterId={rosterId} injuryId={entry.id} request={request}
+          onChanged={async () => { await onChanged(); await load(); }} />}
+        {entry.pending && data.canAdd && <button className="outline-button" type="button" disabled={disabled || open} onClick={(event) => {
         trigger.current = event.currentTarget;
         setResolvesId(entry.id); setSelection({ resultId: entry.result.id }); setOpen(true); setModelIndex(0);
-      }}>Resolve {entry.result.name}</button>} />)}
+      }}>Resolve {entry.result.name}</button>}
+        </>} />)}
     </div>}
   </section>;
 }

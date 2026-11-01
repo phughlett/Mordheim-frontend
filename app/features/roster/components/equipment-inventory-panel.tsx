@@ -98,7 +98,7 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
     }>();
     for (const item of data?.inventory ?? []) {
       const key = member.role === "Henchman"
-        ? item.stackKey ?? `${item.shopItemId ? `shop:${item.shopItemId}` : `option:${item.equipmentOptionId}`}/${item.unitCostPaid}`
+        ? `${item.stackKey ?? `${item.shopItemId ? `shop:${item.shopItemId}` : `option:${item.equipmentOptionId}`}/${item.unitCostPaid}`}/${item.canRefund ? "refund" : "sale"}/${item.unitSaleValue}`
         : item.id;
       const stack = stacks.get(key);
       if (stack) {
@@ -233,10 +233,11 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
         {inventoryStacks.length ? inventoryStacks.map((stack) => {
           const creationRefund = data?.recruitmentRefund !== false;
           const saleItems = (data?.inventory ?? []).filter((item) => stack.inventoryItemIds.includes(item.id)
-            && (creationRefund ? !item.shopItemId && item.unitCostPaid > 0 : item.unitSaleValue != null && !item.saleRestriction));
+            && (item.canRefund || (creationRefund ? !item.shopItemId && item.unitCostPaid > 0 : item.unitSaleValue != null && !item.saleRestriction)));
+          const purchaseCancellation = saleItems.length > 0 && saleItems.every((item) => item.canRefund);
           const saleQuantity = saleItems.reduce((sum, item) => sum + item.quantity, 0);
-          const refund = saleItems.reduce((sum, item) => sum + (creationRefund ? item.unitCostPaid : item.unitSaleValue ?? 0) * item.quantity, 0);
-          const saleAvailable = saleItems.length > 0 && (creationRefund || Boolean(data?.canSell));
+          const refund = saleItems.reduce((sum, item) => sum + (item.canRefund || creationRefund ? item.unitCostPaid : item.unitSaleValue ?? 0) * item.quantity, 0);
+          const saleAvailable = saleItems.length > 0 && (purchaseCancellation || creationRefund || Boolean(data?.canSell));
           const modelNumbers = [...new Set(stack.modelIndexes)].sort((first, second) => first - second).map((index) => index + 1);
           const modelLabel = modelNumbers.length === 1 ? `Model ${modelNumbers[0]}` : `Models ${modelNumbers.join(", ")}`;
           const returns = stashReturns.filter((entry) => stack.inventoryItemIds.includes(entry.id));
@@ -248,9 +249,9 @@ export function EquipmentInventoryPanel({ member, treasury, data, loading, error
               <EquipmentStatsSummary stats={stack.stats} />
             </div>
             <div className="equipment-owned-actions">
-              <strong>{creationRefund ? "Refund" : "Resale"}: {refund} GC</strong>
+              <strong>{purchaseCancellation || creationRefund ? "Refund" : "Resale"}: {refund} GC</strong>
               {saleAvailable
-                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`${creationRefund ? "Refund" : "Sell"} ${saleQuantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, saleItems.map((item) => item.id))}>{sellingStackKey === stack.key ? "Selling..." : `${creationRefund ? "Refund" : "Sell"} ×${saleQuantity} · ${refund} GC`}</button>
+                ? <button className="equipment-sell-button" type="button" disabled={sellingStackKey !== null} aria-label={`${purchaseCancellation ? "Cancel purchase of" : creationRefund ? "Refund" : "Sell"} ${saleQuantity} ${stack.name} for ${refund} GC`} onClick={() => void sellItem(stack.key, saleItems.map((item) => item.id))}>{sellingStackKey === stack.key ? "Selling..." : `${purchaseCancellation ? "Cancel purchase" : creationRefund ? "Refund" : "Sell"} ×${saleQuantity} · ${refund} GC`}</button>
                 : <span className="equipment-unsellable">{creationRefund ? stack.shopItemId ? "No refund" : "Free · not for sale"
                   : stack.saleRestriction ?? "Sales are unavailable at this campaign stage."}</span>}
               {onReturnToStash && returnEntries.map((entry) => <div key={entry.id}>
