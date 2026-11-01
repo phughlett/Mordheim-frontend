@@ -6,7 +6,6 @@ import { PrintExperienceTrack } from "./experience/print-experience-track";
 import { fieldingSummary } from "../fielding-summary";
 import { gradeLabel } from "./source-rules";
 import { injuryEffectDescription, injuryEffectLabel } from "../injury-effects";
-import { Graveyard } from "./graveyard";
 
 type Request = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 
@@ -186,7 +185,6 @@ export function RosterPrintSheet({ data }: { data: PrintData }) {
       </section>}
 
       {sheets.map((sheet) => <MemberCard key={sheet.member.id} sheet={sheet} />)}
-      {Boolean(roster.graveyard?.length) && <Graveyard entries={roster.graveyard} printable />}
 
       {(references.equipment.length > 0 || references.specialRules.length > 0 || references.skills.length > 0) && (
         <section className="print-reference">

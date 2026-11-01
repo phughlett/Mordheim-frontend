@@ -30,7 +30,7 @@ and print output without rerolling the injury.
 
 The **Graveyard** lists all removed Heroes with their reason and battle number.
 Expand an entry to view its read-only full snapshot (stats, XP, equipment,
-skills, spells and notes). It is also included in PDF/print exports; archived
+skills, spells and notes). It is excluded from PDF/print exports; archived
 Heroes and their gear do not count toward the active roster.
 The Graveyard is hidden during roster creation. **Undo removal** restores
 non-dead Heroes only before the battle counter changes and during hiring

@@ -273,10 +273,9 @@ test("Graveyard shows archived full Hero details read-only and prints without ad
     roster: { name: "Memorial roster", treasury: "0", rating: "0", wyrdstone: "0", graveyard: [entry] },
     sheets: [], stash: [], printedAt: "2026-11-01",
   } });
-  assert.match(printed, /class="print-graveyard"/);
-  assert.match(printed, /class="graveyard-entry" open=""/);
+  assert.doesNotMatch(printed, /Graveyard|graveyard-entry|Fallen Hero/);
   assert.match(printed, /<dt>Total Fielded<\/dt><dd>0 warriors<\/dd>/);
-  assert.match(printed, /Archived spell/);
+  assert.doesNotMatch(printed, /Archived spell|Hero memorial/);
   const legacy = render(Graveyard, { entries: [{ ...entry, snapshot_complete: false }] });
   assert.match(legacy, /Legacy record: this Hero was removed before full snapshots were available/);
   assert.doesNotMatch(legacy, /archived stats/);
