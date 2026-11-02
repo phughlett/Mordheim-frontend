@@ -26,15 +26,16 @@ export function CampaignBar({ roster, onChange, onError, request }: CampaignBarP
     }
   }
 
-  const steps = campaign.phase === "pre_battle" ? campaign.preBattleSteps : campaign.phase === "post_battle" ? campaign.postBattleSteps : campaign.phase === "battle" ? campaign.battlePhases : [];
-  const chosenScenario = scenario || campaign.scenario || "";
+  const tableInProgress = campaign.leagueManaged && campaign.phase === "battle";
+  const steps = campaign.phase === "pre_battle" ? campaign.preBattleSteps : campaign.phase === "post_battle" ? campaign.postBattleSteps : campaign.phase === "battle" && !tableInProgress ? campaign.battlePhases : [];
+  const chosenScenario = campaign.leagueManaged ? campaign.leagueScenario ?? "" : scenario || campaign.scenario || "";
 
   return (
     <section className={`campaign-bar campaign-${campaign.phase}`} aria-label="Campaign sequence">
       <div className="campaign-summary">
         <div className="eyebrow">{roster.campaignName ? `${roster.campaignName.toUpperCase()} · ` : ""}{campaign.phaseLabel.toUpperCase()} · BATTLES FOUGHT {campaign.battlesFought}</div>
-        <strong>{campaign.phase === "battle" ? `Round ${campaign.battleTurn} · Phase ${campaign.step} of ${steps.length}: ` : steps.length > 0 ? `Step ${campaign.step} of ${steps.length}: ` : ""}{campaign.stepLabel}</strong>
-        <p>{campaign.stepDescription}</p>
+        <strong>{tableInProgress ? "Table in progress" : <>{campaign.phase === "battle" ? `Round ${campaign.battleTurn} · Phase ${campaign.step} of ${steps.length}: ` : steps.length > 0 ? `Step ${campaign.step} of ${steps.length}: ` : ""}{campaign.stepLabel}</>}</strong>
+        <p>{tableInProgress ? "Play turns at the tabletop, then record results in Campaign management to begin post-battle steps." : campaign.stepDescription}</p>
         {campaign.scenario && campaign.phase !== "setup" && <p className="campaign-scenario">Scenario: {campaign.scenario}</p>}
       </div>
       {steps.length > 0 && (
@@ -45,15 +46,16 @@ export function CampaignBar({ roster, onChange, onError, request }: CampaignBarP
         </ol>
       )}
       <div className="campaign-actions">
-        {campaign.phase === "pre_battle" && campaign.step === 1 && (
+        {campaign.phase === "pre_battle" && campaign.step === 1 && !campaign.leagueManaged && (
           <select aria-label="Scenario" value={chosenScenario} onChange={(event) => setScenario(event.target.value)} disabled={busy}>
             <option value="">Choose scenario</option>
             {campaign.scenarios.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         )}
+        {campaign.phase === "pre_battle" && campaign.step === 1 && campaign.leagueManaged && <span className="campaign-hint">{chosenScenario ? `Scheduled scenario: ${chosenScenario}` : "Waiting for your assigned scenario. Byes do not play a battle."}</span>}
         {campaign.canReopen && <button className="outline-button" type="button" disabled={busy} onClick={() => send("reopen")}>Reopen roster</button>}
-        {campaign.phase === "battle" && <span className="campaign-hint">Advance the battle from the Battle panel.</span>}
-        {campaign.phase === "pre_battle" && campaign.step === steps.length && <span className="campaign-hint">Ready — start the battle from the Battle panel.</span>}
+        {campaign.phase === "battle" && <span className="campaign-hint">{campaign.leagueManaged ? "Record results in Campaign management." : "Advance the battle from the Battle panel."}</span>}
+        {campaign.phase === "pre_battle" && campaign.step === steps.length && <span className="campaign-hint">{campaign.leagueManaged ? "Ready — start your table in Campaign management." : "Ready — start the battle from the Battle panel."}</span>}
         {campaign.phase !== "battle" && !(campaign.phase === "pre_battle" && campaign.step === steps.length) && <button
           className="primary-button"
           type="button"

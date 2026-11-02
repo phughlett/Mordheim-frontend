@@ -161,7 +161,7 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
                 <div className="advancement-history-item" key={advance.id}>
                   <span>{advance.experienceThreshold} XP · {advance.advanceTable}</span>
                   <strong>{advance.roll ? `2D6 ${advance.roll}${advance.secondaryRoll ? ` · D6 ${advance.secondaryRoll}` : ""} · ` : ""}{advanceDescription(advance)}</strong>
-                  {advance.purchaseCost !== null && <small>Purchased · {advance.purchaseCost} GC · XP {advance.experienceBeforePurchase} → {advance.experienceThreshold}</small>}
+                  {advance.purchaseCost !== null && <small>{advance.houseRule === "starting_bonus" ? "Campaign starting bonus" : `Purchased · ${advance.purchaseCost} GC`} · XP {advance.experienceBeforePurchase} → {advance.experienceThreshold}</small>}
                   {advance.consumedAt && <small>Used for promotion</small>}
                   {advance.canResetChoice && <button className="skills-forget-button" type="button" disabled={actionInProgress}
                     onClick={() => void removeAdvance(advance.id, true)}>Undo spell difficulty choice</button>}
@@ -169,12 +169,12 @@ export function AdvancementPanel({ member, data, loading, error, onRecordAdvance
                     <button
                       className="advancement-remove-button"
                       type="button"
-                      aria-label={advance.purchaseCost !== null ? `Refund purchased advancement at ${advance.experienceThreshold} XP for ${advance.purchaseCost} GC` : `Remove advancement award earned at ${advance.experienceThreshold} XP`}
+                      aria-label={advance.houseRule === "starting_bonus" ? `Undo campaign starting bonus at ${advance.experienceThreshold} XP` : advance.purchaseCost !== null ? `Refund purchased advancement at ${advance.experienceThreshold} XP for ${advance.purchaseCost} GC` : `Remove advancement award earned at ${advance.experienceThreshold} XP`}
                       title="Undo this latest advance and reverse its recorded effect"
                       disabled={submitting || removingAdvanceId !== null}
                       onClick={() => void removeAdvance(advance.id)}
                     >
-                      {removingAdvanceId === advance.id ? "Removing..." : advance.purchaseCost !== null ? `Refund purchase · ${advance.purchaseCost} GC` : "Remove advancement award"}
+                      {removingAdvanceId === advance.id ? "Removing..." : advance.houseRule === "starting_bonus" ? "Undo starting bonus" : advance.purchaseCost !== null ? `Refund purchase · ${advance.purchaseCost} GC` : "Remove advancement award"}
                     </button>
                   )}
                 </div>

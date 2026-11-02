@@ -26,7 +26,7 @@ require.cache[authPath] = {
 };
 const { PrintExperienceTrack } = require("../app/features/roster/components/experience/print-experience-track.tsx");
 const { equipmentStacks, RosterPrintSheet } = require("../app/features/roster/components/roster-print-export.tsx");
-const { isCustomShopItemValid, NewCampaignDialog } = require("../app/features/roster/components/new-campaign-dialog.tsx");
+const { isCustomShopItemValid, CampaignSetup, CampaignRulesSummary, DeleteCampaignDialog } = require("../app/features/roster/components/campaign-setup.tsx");
 const { AdvancePurchasePanel } = require("../app/features/roster/components/advance-purchase-panel.tsx");
 const { CombatSpoils, AssignedEquipment, StashItem, WarbandTradingPanel, RitualPurchase, WeaponUpgrade, filterShopItems, shopItemPriceForType, isCampaignInjuryStep, isHeroStatusWindow, parseTradingDice, shopItemPurchaseRarity, shopItemRarityForType, tradingDataRefreshKey, tradingHeroes } = require("../app/features/roster/components/warband-trading-panel.tsx");
 const { EquipmentInventoryPanel, InventoryStashReturn } = require("../app/features/roster/components/equipment-inventory-panel.tsx");
@@ -43,6 +43,7 @@ const { Graveyard } = require("../app/features/roster/components/graveyard.tsx")
 const { fieldingSummary } = require("../app/features/roster/fielding-summary.ts");
 const { RosterSummary } = require("../app/features/roster/components/roster-summary.tsx");
 const { RosterTopbar } = require("../app/features/roster/components/roster-topbar.tsx");
+const { CampaignBar } = require("../app/features/roster/components/campaign-bar.tsx");
 const { SourceRules, gradeLabel } = require("../app/features/roster/components/source-rules.tsx");
 const { NewRosterDialog } = require("../app/features/roster/components/new-roster-dialog.tsx");
 if (previousAuth) require.cache[authPath] = previousAuth;
@@ -50,6 +51,24 @@ else delete require.cache[authPath];
 require.extensions[".ts"] = previous.ts;
 require.extensions[".tsx"] = previous.tsx;
 const render = (component, props) => renderToStaticMarkup(React.createElement(component, props));
+test("league campaign sequence uses commissioner assignments and tabletop results without changing legacy scenario selection", () => {
+  const roster = { id: "league-roster", campaignName: "League", campaign: {
+    phase: "pre_battle", phaseLabel: "Pre-battle", step: 1, stepLabel: "Choose scenario", stepDescription: "",
+    battlesFought: 0, scenarios: ["Skirmish"], preBattleSteps: ["Choose scenario", "Old wounds", "Set up"],
+    postBattleSteps: [], battlePhases: ["Recovery"], nextLabel: "Next step", leagueManaged: true, leagueScenario: "The Bridge",
+  } };
+  const props = { roster, onChange() {}, onError() {}, request() {} };
+  let html = render(CampaignBar, props);
+  assert.match(html, /Scheduled scenario: The Bridge/);
+  assert.doesNotMatch(html, /<select/);
+  html = render(CampaignBar, { ...props, roster: { ...roster, campaign: { ...roster.campaign, phase: "battle" } } });
+  assert.match(html, /Table in progress/);
+  assert.match(html, /Record results in Campaign management/);
+  assert.doesNotMatch(html, /Next phase/);
+  html = render(CampaignBar, { ...props, roster: { ...roster, campaign: { ...roster.campaign, leagueManaged: false } } });
+  assert.match(html, /aria-label="Scenario"/);
+  assert.match(html, /Skirmish/);
+});
 test("topbar account uses the signed-in username and a dismissible logout popover", () => {
   const html = render(RosterTopbar, { loading: false, saved: true, username: "alice", onLogout: () => {} });
   assert.match(html, /aria-label="Account for alice"/);
@@ -921,12 +940,49 @@ test("skill controls are hidden when disabled while characteristic purchases rem
   assert.match(render(AdvancePurchasePanel, { data: { ...data, skillsEnabled: true }, treasury: "500", onPurchase: async () => true }), /PURCHASE SKILL/);
 });
 
-test("campaign purchase settings remain opt-in by default", () => {
-  const html = render(NewCampaignDialog, { error: "", onCancel: () => {}, onSubmit: async () => true });
-  assert.match(html, /Allow purchased advancements/);
-  assert.match(html, /Trading rules/);
-  assert.match(html, /<input type="checkbox"\/>Allow purchased advancements/);
+const setupProps = { warbands: [{ id: "w1", name: "Reikland Mercenaries", grade: "core" }], request: () => new Promise(() => {}), onCancel: () => {}, onSaved: () => {} };
+
+test("campaign setup is a full page with opt-in hero bonuses and a manual house-rule notice", () => {
+  const html = render(CampaignSetup, setupProps);
+  assert.match(html, /Set up a campaign/);
+  assert.match(html, /Start from the 2026 campaign/);
+  for (const section of ["setup-basics", "setup-warbands", "setup-heroes", "setup-trading", "setup-rules"]) assert.match(html, new RegExp(`id="${section}"`));
+  assert.match(html, /<input type="checkbox"\/><strong>Paid characteristic and skill advances/);
+  assert.match(html, /<input type="checkbox"\/><strong>Free starting bonus characteristics/);
+  assert.match(html, /Some house rules need manual roster changes/);
+  assert.match(html, /No restriction: every warband is allowed/);
   assert.match(html, /type="checkbox" checked=""\/>Not a rare item \(default\)/);
+  assert.match(html, />Create campaign</);
+  assert.doesNotMatch(html, /role="dialog"/);
+});
+
+test("campaign setup edits existing campaigns and keeps saved custom items", () => {
+  const campaign = {
+    id: "c1", name: "League", maxGc: 700, warbandCount: 2, scenarioLimit: null, allowedWarbandIds: ["w1"],
+    tradingRules: { overrides: {}, customItems: [{ id: "custom-1", name: "Charm", description: "d", category: "misc", baseCost: 5, priceDice: 0, priceMultiplier: 1, rarity: null, sourceReference: "x" }] },
+    houseRuleOptions: { optionalRules: [], startingBonus: { stats: ["W"], pool: 4, maxPerHero: 1 } },
+  };
+  const html = render(CampaignSetup, { ...setupProps, initialCampaign: campaign });
+  assert.match(html, /Campaign setup: League/);
+  assert.match(html, /Save campaign setup/);
+  assert.match(html, /Charm<\/strong> · 5 GC · saved/);
+  assert.match(html, /1 of 1 warbands allowed/);
+  assert.match(html, /checked=""\/>Indefinite/);
+  assert.match(html, /INCREASES PER WARBAND/);
+});
+
+test("campaign rules summary labels automated and manual rules", () => {
+  const html = render(CampaignRulesSummary, {
+    campaign: { id: "c1", name: "League", maxGc: 700, warbandCount: 0, scenarioLimit: 10, allowedWarbandIds: [],
+      houseRuleOptions: { optionalRules: ["critical-hits-by-weapon"], startingBonus: { stats: ["W"], pool: 4, maxPerHero: 1 } } },
+    warbands: [],
+    catalog: [{ id: "critical-hits-by-weapon", name: "Critical hits by weapon type", automation: "manual", group: "Battle rules", summary: "Use weapon charts." }],
+  });
+  assert.match(html, /700 GC/);
+  assert.match(html, /10 scenarios/);
+  assert.match(html, /All warbands/);
+  assert.match(html, /4 free \+1 W per warband, at most 1 per Hero/);
+  assert.match(html, /is-manual">Manual<\/span><strong>Critical hits by weapon type/);
 });
 
 test("custom item defaults to valid common rarity without catalog restriction data", () => {
@@ -939,7 +995,7 @@ test("custom item defaults to valid common rarity without catalog restriction da
   assert.equal(isCustomShopItemValid({
     name: "Herbs", description: "Useful herbs.", baseCost: "", rarity: "", rarityIsCommon: true,
   }), false);
-  const html = render(NewCampaignDialog, { error: "", onCancel: () => {}, onSubmit: async () => true });
+  const html = render(CampaignSetup, setupProps);
   assert.match(html, /Not a rare item \(default\)/);
 });
 
@@ -1128,4 +1184,33 @@ test("Tome learning requires a carried Tome and Arcane Lore, with no manual reco
     pendingAdvanceId: null, loading: false, error: "", ...callbacks });
   assert.match(learned, /Lesser Magic is unlocked/);
   assert.doesNotMatch(learned, /Learn Lesser Magic · consume/);
+});
+
+test("starting bonus claims render even when paid advancements are disabled", () => {
+  const data = { enabled: false, skillsEnabled: true, canPurchase: false, nextExperience: 2, stats: [], skillCost: 40, skillAllowance: 0, availableSkills: [],
+    startingBonus: { pool: 4, remaining: 3, maxPerHero: 1, claimed: 0, stats: [{ stat: "W", available: true }] } };
+  const html = render(AdvancePurchasePanel, { data, treasury: "0", onPurchase: async () => true });
+  assert.match(html, /Campaign starting bonus · free/);
+  assert.match(html, /4 free \+1 characteristic increases \(3 left\)/);
+  assert.match(html, /Claim free bonus/);
+  assert.doesNotMatch(html, /Buy advancements/);
+  assert.equal(render(AdvancePurchasePanel, { data: { ...data, startingBonus: null }, treasury: "0", onPurchase: async () => true }), "");
+});
+
+test("campaign deletion is commissioner-desk only and warns that it is permanent", () => {
+  const campaign = { id: "c1", name: "Old league", maxGc: 500, warbandCount: 3, allowedWarbandIds: [] };
+  assert.doesNotMatch(render(CampaignSetup, setupProps), /Delete campaign/);
+  assert.doesNotMatch(render(CampaignSetup, { ...setupProps, initialCampaign: campaign }), /Delete campaign/);
+  const setup = render(CampaignSetup, { ...setupProps, initialCampaign: campaign, onDeleted: () => {} });
+  assert.match(setup, /id="setup-delete"/);
+  assert.match(setup, /This cannot be undone/);
+  assert.match(setup, />Delete campaign\.\.\.</);
+  const dialog = render(DeleteCampaignDialog, { campaign, request: () => new Promise(() => {}), onCancel: () => {}, onDeleted: () => {} });
+  assert.match(dialog, /role="alertdialog"/);
+  assert.match(dialog, /Delete Old league\?/);
+  assert.match(dialog, /permanent and cannot be undone/);
+  assert.match(dialog, /3 warbands will move to Freebuild/);
+  assert.match(dialog, /TYPE THE CAMPAIGN NAME TO CONFIRM/);
+  assert.match(dialog, /type="submit" disabled="">Delete campaign permanently/);
+  assert.match(render(DeleteCampaignDialog, { campaign: { ...campaign, warbandCount: 0 }, request: () => new Promise(() => {}), onCancel: () => {}, onDeleted: () => {} }), /It has no warbands/);
 });

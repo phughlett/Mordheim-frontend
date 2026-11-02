@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { AdvancePurchaseRules, CampaignOption, Roster, TradingRules } from "../types";
-import { NewCampaignDialog } from "./new-campaign-dialog";
+import type { CampaignOption, Roster } from "../types";
 import { CorrectionLauncher } from "../../corrections/correction-launcher";
 
 interface RosterSidebarProps {
@@ -15,9 +14,8 @@ interface RosterSidebarProps {
   campaigns: CampaignOption[];
   activeCampaignId: string;
   onSelectCampaign: (campaignId: string) => void;
-  onCreateCampaign: (name: string, maxGc: number, rules: AdvancePurchaseRules, tradingRules: TradingRules) => Promise<boolean>;
+  onNewCampaign: () => void;
   onJoinCampaign: (code: string) => Promise<boolean>;
-  campaignError: string;
 }
 
 function rosterModelCount(roster: Roster) {
@@ -36,12 +34,10 @@ export function RosterSidebar({
   campaigns,
   activeCampaignId,
   onSelectCampaign,
-  onCreateCampaign,
+  onNewCampaign,
   onJoinCampaign,
-  campaignError,
 }: RosterSidebarProps) {
   const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [shareCode, setShareCode] = useState("");
   const activeCampaign = campaigns.find((item) => item.id === activeCampaignId);
@@ -68,7 +64,7 @@ export function RosterSidebar({
               <strong>{item.name}</strong><small>{item.id === "freebuild" ? "no limit" : `${item.maxGc} GC`}</small>
             </button>
           ))}
-          <button className="campaign-menu-item campaign-menu-new" type="button" onClick={() => setCreating(true)}>+ New campaign</button>
+          <button className="campaign-menu-item campaign-menu-new" type="button" onClick={() => { setOpen(false); onNewCampaign(); }}>+ New campaign</button>
           <form className="campaign-form" onSubmit={async (event) => { event.preventDefault(); if (joinCode.trim() && await onJoinCampaign(joinCode.trim())) { setJoinCode(""); setOpen(false); } }}>
             <input aria-label="Invite code" placeholder="Invite code" value={joinCode} onChange={(event) => setJoinCode(event.target.value)} />
             <div><button type="submit" disabled={!joinCode.trim()}>Join campaign</button></div>
@@ -86,7 +82,7 @@ export function RosterSidebar({
             type="button"
           >
             <span className="nav-emblem">{(item.warband || item.name).slice(0, 1).toUpperCase()}</span>
-            <span className="nav-copy"><strong>{item.name || "Untitled Warband"}</strong><small>{item.warband || "Choose a warband"}</small></span>
+            <span className="nav-copy"><strong>{item.name || "Untitled Warband"}</strong><small>{item.leagueRetired ? "Retired · read only" : item.warband || "Choose a warband"}</small></span>
             <span className="nav-count">{rosterModelCount(item)}</span>
           </button>
         ))}
@@ -98,7 +94,7 @@ export function RosterSidebar({
             {otherRosters.map((item) => (
               <button className={`roster-nav-item ${item.id === activeRosterId ? "is-active" : ""}`} key={item.id} onClick={() => onSelectRoster(item.id)} type="button">
                 <span className="nav-emblem">{(item.warband || item.name).slice(0, 1).toUpperCase()}</span>
-                <span className="nav-copy"><strong>{item.name || "Untitled Warband"}</strong><small>{item.player} · view only</small></span>
+                <span className="nav-copy"><strong>{item.name || "Untitled Warband"}</strong><small>{item.player} · {item.leagueRetired ? "retired" : "view only"}</small></span>
                 <span className="nav-count">{rosterModelCount(item)}</span>
               </button>
             ))}
@@ -111,11 +107,6 @@ export function RosterSidebar({
       </form>
       <button className="new-roster-link" disabled={!canCreateRoster} onClick={onCreateRoster} type="button"><span>+</span> New warband</button>
       <CorrectionLauncher />
-      {creating && <NewCampaignDialog error={campaignError} onCancel={() => setCreating(false)} onSubmit={async (name, maxGc, rules, tradingRules) => {
-        const created = await onCreateCampaign(name, maxGc, rules, tradingRules);
-        if (created) setOpen(false);
-        return created;
-      }} />}
     </aside>
   );
 }

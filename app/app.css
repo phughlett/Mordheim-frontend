@@ -169,7 +169,6 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .mutation-selection { display: grid; gap: 10px; }
 .mutation-inventory { display: grid; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #cbd1c9; }
 .mutation-hire-dialog { max-height: 85vh; overflow-y: auto; }
-.new-campaign-dialog { width: min(650px, 95vw); max-height: 85vh; overflow-y: auto; color: #39443d; }
 .purchase-toggle { display: flex; align-items: center; gap: 8px; margin: 14px 0; font-size: 12px; }
 .purchase-rules-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 6px; margin: 12px 0; font-size: 11px; }
 .purchase-rule-row { display: contents; }
@@ -610,6 +609,40 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 
 .landing-page { min-height: 100vh; color: #e8e8df; background: #202b25; }
+.league-panel { margin-bottom: 24px; padding: 20px; border: 1px solid var(--line); background: var(--paper); font-size: 13px; }
+.league-heading, .league-round > header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.league-panel h2, .league-panel h3, .league-panel h4 { font-family: "Barlow Condensed", sans-serif; font-weight: 600; }
+.league-panel h2 { margin: 4px 0; font-size: 28px; }
+.league-panel h3 { margin: 22px 0 12px; font-size: 23px; }
+.league-panel h4 { margin: 0; font-size: 20px; }
+.league-panel details { margin-top: 16px; padding: 12px; border: 1px solid var(--line); }
+.league-panel summary { cursor: pointer; font-weight: 600; }
+.league-panel p { line-height: 1.6; }
+.league-panel ul { padding-left: 20px; }
+.league-panel li { margin-bottom: 8px; }
+.league-rounds { padding: 0; list-style: none; }
+.league-round { padding: 16px; border: 1px solid var(--line); }
+.league-active { border-left: 4px solid var(--gold); }
+.league-completed { background: #edf0e9; }
+.league-form { margin-top: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.league-form label { display: grid; gap: 5px; }
+.league-form input, .league-form select, .league-form textarea { width: 100%; min-width: 0; padding: 8px; border: 1px solid #b6bfb4; background: #fff; }
+.league-form fieldset { min-width: 0; padding: 12px; border: 1px solid var(--line); }
+.league-wide { grid-column: 1 / -1; }
+.league-prose { white-space: pre-wrap; overflow-wrap: anywhere; }
+.league-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.league-controls { border: 0; padding: 0; min-width: 0; }
+.league-game { padding: 14px 0; border-top: 1px solid var(--line); }
+.league-table-scroll { overflow-x: auto; }
+.league-standings { width: 100%; border-collapse: collapse; text-align: left; }
+.league-standings th, .league-standings td { padding: 8px; border-bottom: 1px solid var(--line); }
+.league-form .league-checkbox { display: inline-flex; align-items: center; margin: 5px 14px 5px 0; }
+.league-checkbox input { width: auto; }
+@media (max-width: 600px) {
+  .league-panel { padding: 12px; }
+  .league-heading { flex-direction: column; }
+  .league-form { grid-template-columns: 1fr; }
+}
 .landing-header, .landing-footer { width: min(1120px, calc(100% - 48px)); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .landing-header { min-height: 82px; border-bottom: 1px solid #3a463e; }
 .landing-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
@@ -682,3 +715,66 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .landing-footer { padding: 19px 0; align-items: flex-start; flex-direction: column; gap: 14px; }
   .landing-footer p { margin: 0; text-align: left; }
 }
+
+/* Full-width campaign setup */
+.page-content-wide { width: min(1600px, 100%); }
+.campaign-setup { color: #39443d; }
+.campaign-setup h1, .campaign-setup h2, .campaign-setup h3 { font-family: "Barlow Condensed", sans-serif; font-weight: 600; color: var(--ink); }
+.campaign-setup h1 { margin: 4px 0; font-size: 34px; }
+.campaign-setup h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 24px; }
+.campaign-setup h3 { margin: 16px 0 4px; font-size: 19px; }
+.campaign-setup-header { display: flex; justify-content: space-between; align-items: end; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.campaign-setup-header .heading-note { max-width: 760px; }
+.campaign-setup-layout { min-width: 0; display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 22px; }
+.campaign-setup-aside { position: sticky; top: 16px; display: grid; gap: 16px; max-height: calc(100vh - 32px); overflow: auto; }
+.campaign-setup-aside nav { display: grid; gap: 2px; }
+.campaign-setup-aside nav a { padding: 8px 10px; border-left: 2px solid var(--line); color: #445349; font-size: 12px; text-decoration: none; }
+.campaign-setup-aside nav a:hover { border-left-color: var(--red); background: var(--paper); }
+.campaign-setup-summary { padding: 14px; border: 1px solid var(--line); background: var(--paper); }
+.campaign-setup-summary h2 { font-size: 19px; }
+.campaign-setup-form { display: grid; gap: 20px; min-width: 0; }
+.setup-card { min-width: 0; padding: 20px 22px; border: 1px solid var(--line); background: var(--paper); scroll-margin-top: 16px; }
+.setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; }
+.setup-inline { max-width: 420px; }
+.setup-choice, .setup-optional-rules, .setup-stat-picks { margin: 14px 0 0; padding: 10px 14px; border: 1px solid var(--line); }
+.setup-choice legend, .setup-optional-rules legend, .setup-stat-picks legend { padding: 0 6px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.setup-choice .purchase-toggle { margin: 8px 0; }
+.setup-stat-picks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.setup-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.setup-toolbar input:not([type="checkbox"]) { flex: 1 1 220px; max-width: 360px; min-height: 36px; padding: 0 10px; border: 1px solid #d7dcd5; border-radius: 2px; background: #fbfbf8; font-size: 12px; }
+.setup-toolbar .purchase-toggle { margin: 0; }
+.setup-warband-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px; max-height: 360px; overflow: auto; padding: 4px; }
+.setup-check { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.setup-check small { color: var(--muted); }
+.setup-option { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--line); }
+.setup-option .purchase-toggle strong { font-size: 13px; }
+.setup-card .campaign-shop-list { max-height: 460px; }
+.setup-rule { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid #e0e3dd; font-size: 12px; }
+.setup-rule:last-child { border-bottom: 0; }
+.setup-rule small { display: block; margin-top: 3px; color: #6d766f; line-height: 1.5; }
+.setup-house-rules textarea { min-height: 260px; font-size: 12px; line-height: 1.5; }
+.setup-notice { margin: 10px 0 4px; padding: 12px 14px; border-left: 3px solid var(--gold); background: #fbf6e9; font-size: 12px; line-height: 1.55; }
+.setup-notice p { margin: 4px 0 0; }
+.automation-badge { display: inline-block; margin: 0 4px; padding: 1px 6px; border-radius: 2px; font-family: inherit; font-size: 9px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; vertical-align: middle; }
+.automation-badge.is-automated { color: #f8f8f2; background: var(--forest); }
+.automation-badge.is-manual { color: #5b4520; background: #f0dfb6; }
+.campaign-setup-actions { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); background: var(--canvas); }
+.campaign-setup-actions .equipment-error { flex: 1 1 100%; margin: 0; }
+.rules-summary-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 12px; line-height: 1.5; }
+.rules-summary-list .automation-badge { margin-left: 0; }
+.starting-bonus { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #cbd1c9; }
+@media (max-width: 900px) {
+  .campaign-setup-layout { grid-template-columns: 1fr; }
+  .campaign-setup-aside { position: static; max-height: none; }
+  .campaign-setup-aside nav { display: flex; flex-wrap: wrap; }
+  .campaign-setup-header { flex-direction: column; align-items: stretch; }
+  .setup-card { padding: 16px; }
+}
+.setup-danger { border-color: #e2b7af; }
+.setup-danger h2 { color: #9a3c30; }
+.danger-outline { border-color: #c98a80; color: #9a3c30; }
+.danger-outline:hover { border-color: #9a3c30; background: #fbeeeb; }
+.primary-button.danger-button { border-color: #9a3c30; background: #9a3c30; }
+.primary-button.danger-button:hover { background: #7f3026; }
+.setup-notice.is-danger { border-left-color: #9a3c30; background: #fbeeeb; }
+.delete-campaign-dialog { width: min(520px, 100%); }

@@ -57,7 +57,36 @@ non-dead Heroes only before the battle counter changes and during hiring
 stages, subject to server-checked capacity and recruitment limits. Dismissals
 after roster creation give no hire-fee refund.
 
-## Development
+## Campaign leagues
+
+Select a campaign to open **Campaign management**. The owner is its commissioner.
+**New campaign** and **Campaign setup** open a full-width setup page (instead of a
+modal) for starting gold, finite/indefinite length, allowed warbands, Hero
+starting bonuses and paid advances, Trading Post items, optional rules and
+house-rule text. Every player sees a rules summary that labels each rule as
+Automated or Manual; manual rules may need hand edits to rosters. Commissioners
+can delete a campaign from the setup page after a permanent-deletion warning and
+typing its name; its warbands move to Freebuild. Existing unscheduled campaigns retain their
+original Battle panel.
+
+The scenario calendar shows play windows and locations and exports `.ics` events.
+Schedule players at tables, mark absences, then determine teams at the event.
+Tables support flexible teams or individual results, including the ten supplied
+2026 scenarios in the library. Their structured sections can be copied into the
+custom-scenario form; original documents retain maps and tables. Shared scenarios
+import as independent copies.
+
+Complete roster preparation before starting a table, record results, and resolve
+post-battle work before the next scenario. Commissioners may confirm completed
+post-battle steps and explicitly grant one-time absence catch-up awards. Special
+scenario effects and ordinary rewards remain manual. Player standings survive
+retiring/replacing a warband; retired warbands remain visible and read-only.
+
+Loading the 2026 house-rule template only fills the editor: review and save it.
+It does not automatically implement its special gear, currencies or penalties.
+The source player/date roster is not published.
+
+## Development setup
 
 ```sh
 npm ci

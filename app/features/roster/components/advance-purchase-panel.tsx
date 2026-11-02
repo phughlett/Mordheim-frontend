@@ -7,6 +7,7 @@ export function AdvancePurchasePanel({ data, treasury, onPurchase }: {
   onPurchase: (input: PurchaseAdvanceInput) => Promise<boolean>;
 }) {
   const [stat, setStat] = useState<StatLabel | "">("");
+  const [bonusStat, setBonusStat] = useState<StatLabel | "">("");
   const [skillId, setSkillId] = useState("");
   const [purchasing, setPurchasing] = useState(false);
   async function purchase(input: PurchaseAdvanceInput) {
@@ -14,25 +15,40 @@ export function AdvancePurchasePanel({ data, treasury, onPurchase }: {
     try {
       if (await onPurchase(input)) {
         setStat("");
+        setBonusStat("");
         setSkillId("");
       }
     } finally {
       setPurchasing(false);
     }
   }
-  if (!data.enabled) return null;
+  const bonus = data.startingBonus;
+  if (!data.enabled && !bonus) return null;
   const selected = data.stats.find((choice) => choice.stat === stat);
+  const bonusChoice = bonus?.stats.find((choice) => choice.stat === bonusStat);
   return (
     <section className="advance-purchases" aria-label="Purchased advancements">
+      {bonus && <div className="starting-bonus" aria-label="Campaign starting bonus">
+        <strong>Campaign starting bonus · free</strong>
+        <p className="advancement-rules">Commissioner house rule: the warband shares {bonus.pool} free +1 characteristic {bonus.pool === 1 ? "increase" : "increases"} ({bonus.remaining} left), at most {bonus.maxPerHero} per Hero ({bonus.claimed} claimed by this Hero). Each claim advances XP to the next Hero threshold and counts as that advance. Undo it like a purchased award.</p>
+        <div className="advancement-actions">
+          <label className="skills-field"><span>BONUS CHARACTERISTIC</span><select value={bonusStat} disabled={purchasing} onChange={(event) => setBonusStat(event.target.value as StatLabel | "")}>
+            <option value="">Choose characteristic</option>
+            {bonus.stats.map((choice) => <option key={choice.stat} value={choice.stat} disabled={!choice.available}>{choice.stat} +1{choice.available ? "" : " · unavailable"}</option>)}
+          </select></label>
+          <button type="button" className="skills-learn-button" disabled={purchasing || !bonusChoice?.available} onClick={() => bonusStat && void purchase({ stat: bonusStat, startingBonus: true })}>Claim free bonus</button>
+        </div>
+      </div>}
+      {data.enabled && <>
       <strong>Buy advancements · roster creation only</strong>
-      <p className="advancement-rules">Every stat or skill purchase advances XP to the next Hero threshold and records the paid cost. Refund by undoing the latest purchased award; later advances must be undone first.</p>
+      <p className="advancement-rules">Every stat or skill purchase advances XP to the next Hero threshold and records the paid cost. {data.costEscalation === "hero" ? "After this Hero's first paid characteristic, further characteristics use the higher price." : ""} Refund by undoing the latest purchased award; later advances must be undone first.</p>
       {!data.canPurchase ? <p className="skills-state">{data.pendingAdvances ? "Resolve pending advances before buying." : "The Hero experience track is full."}</p> : (
         <>
           <p className="advancement-rules">Next purchase advances experience to {data.nextExperience} XP.</p>
           <div className="advancement-actions">
             <label className="skills-field"><span>PURCHASE CHARACTERISTIC</span><select value={stat} disabled={purchasing} onChange={(event) => setStat(event.target.value as StatLabel | "")}>
               <option value="">Choose characteristic</option>
-              {data.stats.map((choice) => <option key={choice.stat} value={choice.stat} disabled={!choice.available}>
+              {data.stats.filter((choice) => choice.maxIncreases !== 0).map((choice) => <option key={choice.stat} value={choice.stat} disabled={!choice.available}>
                 {choice.stat} +1 · {choice.cost} GC · {choice.purchasedCount}{choice.maxIncreases === null ? "" : `/${choice.maxIncreases}`} purchased{choice.racialMaximum === null ? "" : ` · racial max ${choice.racialMaximum}`}
               </option>)}
             </select></label>
@@ -52,6 +68,7 @@ export function AdvancePurchasePanel({ data, treasury, onPurchase }: {
           {((selected?.cost ?? 0) > Number(treasury) || (data.skillsEnabled && skillId && data.skillCost > Number(treasury))) && <p className="skills-error">Not enough GC for the selected purchase.</p>}
         </>
       )}
+      </>}
     </section>
   );
 }

@@ -193,6 +193,7 @@ export interface WarriorAdvance {
   canRemove: boolean;
   canResetChoice?: boolean;
   purchaseCost: number | null;
+  houseRule?: string | null;
   experienceBeforePurchase: number | null;
 }
 
@@ -200,7 +201,27 @@ export interface AdvancePurchaseRules {
   enabled: boolean;
   skillsEnabled: boolean;
   skillCost: number;
+  costEscalation?: "characteristic" | "hero";
   stats: Record<StatLabel, { firstCost: number; additionalCost: number; maxIncreases: number | null }>;
+}
+
+export interface StartingBonusRule {
+  stats: StatLabel[];
+  pool: number;
+  maxPerHero: number;
+}
+
+export interface HouseRuleOptions {
+  optionalRules: string[];
+  startingBonus: StartingBonusRule | null;
+}
+
+export interface OptionalRuleDefinition {
+  id: string;
+  name: string;
+  automation: "manual" | "automated";
+  group: string;
+  summary: string;
 }
 
 export type ShopCategory = "weapon" | "armour" | "shield" | "misc";
@@ -334,6 +355,14 @@ export interface AdvancePurchaseOptions {
   skillCost: number;
   skillAllowance: number;
   availableSkills: SkillOption[];
+  costEscalation?: "characteristic" | "hero";
+  startingBonus?: {
+    pool: number;
+    remaining: number;
+    maxPerHero: number;
+    claimed: number;
+    stats: { stat: StatLabel; available: boolean }[];
+  } | null;
 }
 
 export interface WarriorAdvancementsData {
@@ -365,6 +394,7 @@ export interface WarriorAdvancementsData {
 export interface PurchaseAdvanceInput {
   stat?: StatLabel;
   skillId?: string;
+  startingBonus?: boolean;
 }
 
 export interface RecordAdvanceInput {
@@ -624,6 +654,8 @@ export interface LadsGotTalentOptions {
 }
 
 export interface Campaign {
+  leagueManaged?: boolean;
+  leagueScenario?: string | null;
   phase: "setup" | "pre_battle" | "battle" | "post_battle";
   phaseLabel: string;
   step: number;
@@ -649,6 +681,13 @@ export interface CampaignOption {
   inviteCode?: string;
   isOwner?: boolean;
   advancePurchaseRules?: AdvancePurchaseRules;
+  tradingRules?: TradingRules;
+  leagueEnabled?: boolean;
+  scenarioLimit?: number | null;
+  houseRules?: string;
+  allowedWarbandIds?: string[];
+  maxWarbandsPerPlayer?: number | null;
+  houseRuleOptions?: HouseRuleOptions;
 }
 
 export interface GraveyardEntry {
@@ -691,6 +730,7 @@ export interface GraveyardEntry {
 }
 
 export interface Roster {
+  leagueRetired?: boolean;
   graveyard?: GraveyardEntry[];
   injuryHistory?: { id: string; canRemove?: boolean; warrior_id: string | null; warrior_name: string; battle_number: number;
     result: InjuryResult }[];

@@ -4,13 +4,15 @@ import { CapacityPanel } from "./components/capacity-panel";
 import { AdvancementPanel } from "./components/advancement-panel";
 import { MemberDetailsPanel } from "./components/member-details-panel";
 import { MemberTable } from "./components/member-table";
-import type { AdvancePurchaseRules, CampaignOption, PurchaseAdvanceInput, TradingData, TradingRules } from "./types";
+import type { CampaignOption, PurchaseAdvanceInput, TradingData } from "./types";
 import { NewRosterDialog } from "./components/new-roster-dialog";
 import { MutationHireDialog } from "./components/mutation-hire-dialog";
 import { RosterFields } from "./components/roster-fields";
 import { CampaignBar } from "./components/campaign-bar";
 import { apiBaseUrl, getToken, type AuthUser } from "../auth/auth";
 import { BattlePanel } from "./components/battle-panel";
+import { LeaguePanel } from "./components/league-panel";
+import { CampaignSetup } from "./components/campaign-setup";
 import { InjuryPanel, InjuryResultView, RemoveInjuryButton } from "./components/injury-panel";
 import { Graveyard } from "./components/graveyard";
 import { ConsumedTomeCorrections } from "./components/consumed-tome-corrections";
@@ -98,6 +100,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const [creatingRoster, setCreatingRoster] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState("");
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
+  const [campaignSetup, setCampaignSetup] = useState<"new" | CampaignOption | null>(null);
   const [newRosterDialogOpen, setNewRosterDialogOpen] = useState(false);
   const [saved, setSaved] = useState(true);
   const [error, setError] = useState("");
@@ -163,7 +166,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const viewing = visibleOthers.find((item) => item.id === activeRosterId) ?? null;
   const activeCampaign = activeCampaignId === FREEBUILD ? freebuildOption : campaigns.find((item) => item.id === activeCampaignId) ?? null;
   const roster = viewing ?? campaignRosters.find((item) => item.id === activeRosterId) ?? campaignRosters[0] ?? emptyRoster;
-  const readOnly = viewing !== null;
+  const readOnly = viewing !== null || Boolean(roster.leagueRetired);
   const onTradingDataChanged = useCallback((data: TradingData | null) => {
     setTradingData({ rosterId: roster.id, data });
   }, [roster.id]);
@@ -774,19 +777,28 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   function selectCampaign(campaignId: string) {
     setActiveCampaignId(campaignId);
     setActiveRosterId(rosters.find((item) => rosterKey(item) === campaignId)?.id ?? "");
-    setActiveMemberId(null);
+    setActiveMemberId(null);    setCampaignSetup(null);
   }
 
-  async function createCampaign(name: string, maxGc: number, advancePurchaseRules: AdvancePurchaseRules, tradingRules: TradingRules) {
+  function campaignSaved(saved: CampaignOption) {
+    const creating = !campaigns.some((item) => item.id === saved.id);
+    setCampaigns((current) => creating ? [...current, saved] : current.map((item) => item.id === saved.id ? saved : item));
+    if (creating) selectCampaign(saved.id);
+    setCampaignSetup(null);
+    setError("");
+  }
+
+  async function campaignDeleted(campaignId: string, movedWarbandCount: number) {
+    setCampaigns((current) => current.filter((item) => item.id !== campaignId));
+    setCampaignSetup(null);
+    setActiveCampaignId(FREEBUILD);
+    setActiveRosterId("");
+    setActiveMemberId(null);
     try {
-      const created = await apiRequest<CampaignOption>("/campaigns", "POST", { name, maxGc, advancePurchaseRules, tradingRules });
-      setCampaigns((current) => [...current, created]);
-      selectCampaign(created.id);
+      await refreshRosters();
       setError("");
-      return true;
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not create campaign.");
-      return false;
+    } catch {
+      setError(`Campaign deleted${movedWarbandCount ? `; ${movedWarbandCount} warband(s) moved to Freebuild` : ""}. Reload to see your warbands.`);
     }
   }
 
@@ -950,12 +962,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
         campaigns={[freebuildOption, ...campaigns]}
         activeCampaignId={activeCampaignId}
         onSelectCampaign={selectCampaign}
-        onCreateCampaign={createCampaign}
-        campaignError={error}
+        onNewCampaign={() => setCampaignSetup("new")}
         onJoinCampaign={joinCampaign}
         activeRosterId={roster.id}
         saved={saved}
-        onSelectRoster={(rosterId) => { setActiveRosterId(rosterId); setActiveMemberId(null); }}
+        onSelectRoster={(rosterId) => { setActiveRosterId(rosterId); setActiveMemberId(null); setCampaignSetup(null); }}
         onCreateRoster={openNewRosterDialog}
         canCreateRoster={activeCampaign !== null}
       />
@@ -963,9 +974,20 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       <main className="workspace" id="roster">
         <RosterTopbar loading={loading} saved={saved} username={user.username} onLogout={onLogout} />
 
-        <div className="page-content">
+        {campaignSetup ? <div className="page-content page-content-wide">
+          <CampaignSetup key={campaignSetup === "new" ? "new" : campaignSetup.id} initialCampaign={campaignSetup === "new" ? undefined : campaignSetup}
+            warbands={warbands} request={apiRequest} onCancel={() => setCampaignSetup(null)} onSaved={campaignSaved}
+            onDeleted={(campaignId, moved) => void campaignDeleted(campaignId, moved)} />
+        </div> : <div className="page-content">
           {error && <div className="api-error" role="alert">{error}<button type="button" onClick={() => window.location.reload()}>Retry connection</button></div>}
-          {readOnly && <div className="readonly-banner">Viewing {roster.player ?? "another player"}'s warband · read-only</div>}
+          {activeCampaign && activeCampaignId !== FREEBUILD && <LeaguePanel key={activeCampaign.id}
+            campaign={activeCampaign} warbands={warbands} request={apiRequest} onRostersChanged={refreshRosters}
+            onCampaignChanged={(updated) => setCampaigns((current) => current.map((item) => item.id === updated.id ? updated : item))}
+            onOpenSetup={() => setCampaignSetup(activeCampaign)} />}
+          {activeCampaign && activeCampaignId !== FREEBUILD && !activeCampaign.leagueEnabled && <BattlePanel
+            campaignId={activeCampaign.id} rosters={[...campaignRosters, ...visibleOthers]}
+            request={apiRequest} onRostersChanged={refreshRosters} onError={setError} />}
+          {readOnly && <div className="readonly-banner">{roster.leagueRetired ? "Retired league warband" : `Viewing ${roster.player ?? "another player"}'s warband`} · read-only</div>}
           {roster.id && (
             <div className="share-bar">
               <RosterPrintExport roster={roster} request={apiRequest} onError={setError} />
@@ -986,9 +1008,6 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             onCreate={openNewRosterDialog}
           />
           {roster.campaignId && <CampaignBar roster={roster} onChange={replaceRoster} onError={setError} request={(path, method, body) => apiRequest<Roster>(path, method, body)} />}
-          {roster.campaignId && (roster.campaign?.phase === "pre_battle" || roster.campaign?.phase === "battle") && (
-            <BattlePanel campaignId={roster.campaignId} rosters={campaignRosters} request={apiRequest} onRostersChanged={refreshRosters} onError={setError} />
-          )}
           <section className="roster-overview" aria-label="Warband overview">
             <RosterFields roster={roster} onUpdate={updateRoster} readOnly={readOnly} />
             {capacity && <CapacityPanel capacity={capacity} />}
@@ -1141,7 +1160,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
             }} />}
           </fieldset>
           <footer className="page-footer"><span>MORDHEIM ROSTER LEDGER</span><span>KEEP YOUR WITS. KEEP YOUR RECORDS.</span></footer>
-        </div>
+        </div>}
         <NewRosterDialog
           open={newRosterDialogOpen}
           submitting={creatingRoster}
