@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { Route } from "./+types/home";
+import { getToken } from "../features/auth/auth";
 
 const siteOrigin = "https://mordheim.hughlett.org";
 const pageTitle = "Mordheim Warband Roster Builder & Campaign Tracker";
@@ -53,8 +54,8 @@ const features = [
 
 export default function Home() {
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("share")) {
-      window.location.replace(`/app${window.location.search}`);
+    if (getToken() || new URLSearchParams(window.location.search).has("share")) {
+      window.location.replace(`/app${window.location.search}${window.location.hash}`);
     }
   }, []);
 

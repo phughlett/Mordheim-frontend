@@ -97,7 +97,12 @@ The development server listens on port 5173. Set `VITE_API_BASE_URL` to the
 backend's API URL (by default `http://localhost:4000/api`).
 
 The public landing page at `/` and sign-in/roster app at `/app` are pre-rendered
-at build time. The SEO canonical URL, `robots.txt` and `sitemap.xml` use
+at build time. Browsers with a saved sign-in session go directly from `/` to
+`/app`, preserving query parameters and fragments. The app validates the session
+and shows sign-in if it has expired. Signed-out visitors still see the public
+landing page; legacy `?share=...` links also go to the app.
+
+The SEO canonical URL, `robots.txt` and `sitemap.xml` use
 `https://mordheim.hughlett.org`; update those references if the production
 domain changes. The sitemap intentionally lists only the public landing page.
 
