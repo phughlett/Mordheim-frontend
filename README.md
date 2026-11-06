@@ -102,6 +102,17 @@ at build time. Browsers with a saved sign-in session go directly from `/` to
 and shows sign-in if it has expired. Signed-out visitors still see the public
 landing page; legacy `?share=...` links also go to the app.
 
+The Welcome page includes **The Lantern Guard**, a fictional veteran Reikland
+warband. Visitors can expand its five Heroes and three Henchman groups to inspect
+characteristics, XP, advances, skills, equipment, injuries and notes, with treasury,
+wyrdstone, rating and stash shown together. This read-only showcase is bundled
+with the frontend, needs no account or API access, and does not create or modify
+live rosters. Its injury penalties are already included in the displayed stats.
+**See an Example Warband** opens the showcase. Its **Export PDF / Print** button
+prints all warriors and groups (including collapsed records), skills, equipment,
+advances, injuries and stash. Choose **Save as PDF** in the browser print dialog;
+no sign-in or API request is needed.
+
 The SEO canonical URL, `robots.txt` and `sitemap.xml` use
 `https://mordheim.hughlett.org`; update those references if the production
 domain changes. The sitemap intentionally lists only the public landing page.

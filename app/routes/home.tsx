@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { Route } from "./+types/home";
 import { getToken } from "../features/auth/auth";
+import { ExampleWarband } from "../features/roster/components/example-warband";
 
 const siteOrigin = "https://mordheim.hughlett.org";
 const pageTitle = "Mordheim Warband Roster Builder & Campaign Tracker";
@@ -71,6 +72,7 @@ export default function Home() {
         </a>
         <nav className="landing-nav" aria-label="Main navigation">
           <a href="#features">Features</a>
+          <a href="#example-warband">See an Example Warband</a>
           <a href="#how-it-works">How it works</a>
           <a className="landing-nav-cta" href="/app">Sign in</a>
         </nav>
@@ -88,7 +90,7 @@ export default function Home() {
             <a className="landing-button landing-button-primary" href="/app">
               Open the roster app <span aria-hidden="true">→</span>
             </a>
-            <a className="landing-text-link" href="#features">Explore features</a>
+            <a className="landing-button landing-button-secondary" href="#example-warband">See an Example Warband</a>
           </div>
           <p className="landing-note">For organizing your campaign—not a replacement for the rulebook or tabletop play.</p>
         </section>
@@ -112,6 +114,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+        <ExampleWarband />
 
         <section className="landing-how" id="how-it-works" aria-labelledby="how-title">
           <div>
