@@ -807,6 +807,19 @@ test("Leader is shown as a granted ability, cannot be forgotten, and does not lo
   assert.doesNotMatch(html, /Forget Leader/);
 });
 
+test("starting skills do not block an unassigned promoted Henchman from choosing skill lists", () => {
+  const skill = { id: "starting", warriorSkillId: "starting", name: "Starting skill", category: "Combat",
+    description: "", isStarting: true };
+  const html = render(SkillsPanel, {
+    member: { role: "Hero" }, loading: false, error: "", listPicker: React.createElement("span", null, "Choose lists"),
+    data: { learnedSkills: [skill], eligibility: [], availableSkills: [], pendingSkillAdvances: [] },
+  });
+  assert.match(html, /Choose two skill lists to begin learning skills/);
+  assert.match(html, /Choose lists/);
+  assert.match(html, /class="skills-lists-button" type="button" title="Change the skill lists this Hero can learn from\."/);
+  assert.doesNotMatch(html, /skills-lists-button"[^>]*disabled/);
+});
+
 test("print tracks have every XP box, marked earned XP, and exact advancement thresholds", () => {
   for (const [role, count, thresholds] of [
     ["Hero", 90, [2, 4, 6, 8, 11, 14, 17, 20, 24, 28, 32, 36, 41, 46, 51, 57, 63, 69, 76, 83, 90]],

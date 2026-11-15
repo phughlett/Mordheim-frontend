@@ -24,7 +24,7 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
   const availableSkills = data?.availableSkills ?? [];
   const eligibility = data?.eligibility ?? [];
   const learnedSkills = data?.learnedSkills ?? [];
-  const hasLearnedSkills = learnedSkills.some((skill) => !skill.isLeaderAbility);
+  const hasLearnedSkills = learnedSkills.some((skill) => !skill.isLeaderAbility && !skill.isStarting);
   const pendingSkillAdvances = data?.pendingSkillAdvances ?? [];
   const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
   const selectedSkill = availableSkills.find((skill) => skill.id === selectedSkillId);

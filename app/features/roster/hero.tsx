@@ -297,7 +297,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       return;
     }
     return loadMemberSkills(selectedMember.id);
-  }, [selectedMember?.id, selectedMember?.warriorTypeId, capacity?.leader?.id]);
+  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.role, capacity?.leader?.id, battleCountVersion]);
 
   useEffect(() => {
     if (!selectedMember) {
@@ -354,7 +354,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       })
       .finally(() => { if (!cancelled) setLadsGotTalentLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedMember?.id, selectedMember?.warriorTypeId]);
+  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.role, battleCountVersion, warriorTypes]);
 
   async function refreshRosters() {
     setRosters(await apiRequest<Roster[]>("/rosters"));
