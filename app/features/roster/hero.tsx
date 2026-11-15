@@ -205,6 +205,11 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   const selectedWarriorType = selectedMember
     ? warriorTypes.find((type) => type.id === selectedMember.warriorTypeId)
     : undefined;
+  const hasPendingPromotionAdvance = !advancementsLoading
+    && Boolean(memberAdvancements?.history.some((advance) => advance.result === "lads_got_talent" && !advance.consumedAt));
+  const isPromotionCandidate = selectedMember?.role === "Henchman"
+    && selectedWarriorType?.promotionEligibility === "eligible"
+    && hasPendingPromotionAdvance;
 
   function isPromotedHenchman(member: Member) {
     return member.role === "Hero"
@@ -338,7 +343,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   }, [selectedMember?.id, selectedMember?.warriorTypeId]);
 
   useEffect(() => {
-    if (!selectedMember || !isPromotedHenchman(selectedMember)) {
+    if (!selectedMember || (!isPromotedHenchman(selectedMember) && !isPromotionCandidate)) {
       setLadsGotTalentOptions(null);
       setLadsGotTalentLoading(false);
       setLadsGotTalentError("");
@@ -354,7 +359,7 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
       })
       .finally(() => { if (!cancelled) setLadsGotTalentLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.role, battleCountVersion, warriorTypes]);
+  }, [selectedMember?.id, selectedMember?.warriorTypeId, selectedMember?.role, battleCountVersion, warriorTypes, isPromotionCandidate]);
 
   async function refreshRosters() {
     setRosters(await apiRequest<Roster[]>("/rosters"));
@@ -443,13 +448,13 @@ export function Hero({ user, onLogout }: { user: AuthUser; onLogout: () => void 
     });
   }
 
-  async function promoteMember(memberId: string) {
+  async function promoteMember(memberId: string, choices: SkillCategoryChoice[]) {
     const member = members.find((item) => item.id === memberId);
-    if (!member || !window.confirm(`Promote ${member.name} after a successful Lad's Got Talent advance?`)) return;
+    if (!member || !window.confirm(`Promote ${member.name} after a successful Lad's Got Talent advance and apply the selected skill lists?`)) return;
     setSaved(false);
     setError("");
     try {
-      const promotedMember = await apiRequest<Member>(`/members/${memberId}/promote`, "POST");
+      const promotedMember = await apiRequest<Member>(`/members/${memberId}/promote`, "POST", { choices });
       const updatedRoster = await apiRequest<Roster>(`/rosters/${roster.id}`);
       setRosters((current) => current.map((item) => item.id === roster.id ? updatedRoster : item));
       setActiveMemberId(promotedMember.id);

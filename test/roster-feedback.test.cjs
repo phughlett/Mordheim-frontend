@@ -35,6 +35,7 @@ const { SpellPanel } = require("../app/features/roster/components/spell-panel.ts
 const { ConsumedTomeCorrections } = require("../app/features/roster/components/consumed-tome-corrections.tsx");
 const { CapacityPanel } = require("../app/features/roster/components/capacity-panel.tsx");
 const { SkillsPanel } = require("../app/features/roster/components/skills-panel.tsx");
+const { LadsGotTalentPanel } = require("../app/features/roster/components/lads-got-talent-panel.tsx");
 const { RosterFields, WarbandCurrency } = require("../app/features/roster/components/roster-fields.tsx");
 const { RosterHeading } = require("../app/features/roster/components/roster-heading.tsx");
 const { MemberTable } = require("../app/features/roster/components/member-table.tsx");
@@ -218,6 +219,45 @@ test("injury result cards retain nested outcomes, metadata and exact paragraph b
   assert.match(html, /Battle 3 · manual/);
   assert.match(html, /class="injury-rule-text">First paragraph\.\nSecond paragraph\./);
   assert.match(html, /class="injury-cards"><article/);
+});
+
+test("promoted Dwarfs can assign missing Lad's Got Talent lists despite an automatic Dwarf skill", () => {
+  const choices = [
+    { category: "Combat", specialListName: null },
+    { category: "Shooting", specialListName: null },
+    { category: "Strength", specialListName: null },
+  ];
+  const picker = React.createElement(LadsGotTalentPanel, {
+    options: { options: choices, selected: [], canChange: true },
+    loading: false,
+    error: "",
+    onSave: async () => {},
+  });
+  const html = render(SkillsPanel, {
+    member: { id: "diamond", role: "Hero" },
+    data: {
+      eligibility: [{ category: "Special", specialListName: "Dwarf special skills" }],
+      learnedSkills: [{ warriorSkillId: "resource-hunter", name: "Resource Hunter", category: "Special", specialListName: "Dwarf special skills", isStarting: false, isLeaderAbility: false }],
+      availableSkills: [],
+      pendingSkillAdvances: [],
+    },
+    loading: false,
+    error: "",
+    onLearn: async () => {},
+    onForget: async () => {},
+    listPicker: picker,
+    hasSkillListChoices: false,
+  });
+  assert.match(html, /Choose the 2 skill lists/);
+  assert.match(html, />Close lists<\/button>/);
+  assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Close lists/);
+  assert.match(render(LadsGotTalentPanel, {
+    options: { options: choices, selected: [], canChange: true },
+    loading: false,
+    error: "",
+    mode: "promotion",
+    onSave: async () => {},
+  }), />Promote to hero<\/button>/);
 });
 
 test("injury history retains exact rules and unavailable warriors are excluded from fielding totals", () => {

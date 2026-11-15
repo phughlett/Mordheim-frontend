@@ -59,7 +59,7 @@ interface MemberDetailsPanelProps {
   onSetSpellDiscipline: (disciplineId: string) => Promise<boolean>;
   onConsumeMagicTome: () => Promise<boolean>;
   onSetLadsGotTalentChoices: (memberId: string, choices: SkillCategoryChoice[]) => Promise<void>;
-  onPromote: (memberId: string) => void;
+  onPromote: (memberId: string, choices: SkillCategoryChoice[]) => Promise<void>;
   isPromotedHenchman: (member: Member) => boolean;
 }
 
@@ -220,7 +220,13 @@ export function MemberDetailsPanel({
         {selectedWarriorType?.promotionEligibility === "eligible"
           ? advancementsData?.history.some((advance) => advance.result === "lads_got_talent" && !advance.consumedAt)
             ? capacity && capacity.currentHeroes < capacity.maxHeroes
-            ? <><p>Eligible after the Henchman group earns the promotion advance.</p><button className="promotion-button" onClick={() => onPromote(member.id)} type="button">Promote to hero</button></>
+            ? <LadsGotTalentPanel
+              options={ladsGotTalentOptions}
+              loading={ladsGotTalentLoading}
+              error={ladsGotTalentError}
+              mode="promotion"
+              onSave={(choices) => onPromote(member.id, choices)}
+            />
             : <p>The warband is at its {capacity?.maxHeroes ?? 6}-Hero limit. Re-roll this advance instead of promoting.</p>
             : <p>Resolve a Henchman advance and record Lad's Got Talent before promoting.</p>
           : <p>{selectedWarriorType?.promotionEligibility === "ineligible" ? "This Henchman type cannot become a Hero." : "Promotion eligibility for this type has not been verified."}</p>}
@@ -248,6 +254,7 @@ export function MemberDetailsPanel({
         data={skillsData}
         loading={skillsLoading}
         error={skillsError}
+        hasSkillListChoices={ladsGotTalentOptions?.selected.length === 2}
         onLearn={(skillId, advanceId) => onLearnSkill(member.id, skillId, advanceId)}
         onForget={(warriorSkillId) => onForgetSkill(member.id, warriorSkillId)}
         listPicker={isPromotedHenchman(member) ? (

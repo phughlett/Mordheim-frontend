@@ -649,6 +649,7 @@ export interface MagicTomeInventoryItem {
 
 export interface LadsGotTalentOptions {
   canChange?: boolean;
+  isPromotionCandidate?: boolean;
   options: SkillCategoryChoice[];
   selected: SkillCategoryChoice[];
 }

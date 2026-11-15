@@ -13,12 +13,14 @@ interface SkillsPanelProps {
   onLearn: (skillId: string, advanceId: string) => Promise<void>;
   onForget: (warriorSkillId: string) => Promise<void>;
   listPicker?: ReactNode;
+  hasSkillListChoices?: boolean;
 }
 
-export function SkillsPanel({ member, data, loading, error, onLearn, onForget, listPicker }: SkillsPanelProps) {
+export function SkillsPanel({ member, data, loading, error, onLearn, onForget, listPicker, hasSkillListChoices = false }: SkillsPanelProps) {
   const [selectedSkillId, setSelectedSkillId] = useState("");
   const [learning, setLearning] = useState(false);
   const [editingLists, setEditingLists] = useState(false);
+  const [dismissedMissingLists, setDismissedMissingLists] = useState(false);
   const [forgettingId, setForgettingId] = useState<string | null>(null);
 
   const availableSkills = data?.availableSkills ?? [];
@@ -29,7 +31,9 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
   const [selectedAdvanceId, setSelectedAdvanceId] = useState("");
   const selectedSkill = availableSkills.find((skill) => skill.id === selectedSkillId);
 
-  const showPicker = Boolean(listPicker) && !hasLearnedSkills && (editingLists || (!loading && eligibility.length === 0));
+  const showPicker = Boolean(listPicker) && (hasSkillListChoices
+    ? !hasLearnedSkills && (editingLists || (!loading && eligibility.length === 0))
+    : !dismissedMissingLists);
 
   async function learnSelectedSkill() {
     if (!selectedSkill || !selectedAdvanceId) return;
@@ -61,11 +65,13 @@ export function SkillsPanel({ member, data, loading, error, onLearn, onForget, l
           <button
             className="skills-lists-button"
             type="button"
-            disabled={hasLearnedSkills}
-            title={hasLearnedSkills ? "Skill lists are locked once a skill has been learned." : "Change the skill lists this Hero can learn from."}
-            onClick={() => setEditingLists(!showPicker)}
+            disabled={hasLearnedSkills && hasSkillListChoices}
+            title={hasLearnedSkills && hasSkillListChoices ? "Skill lists are locked once a skill has been learned." : "Change the skill lists this Hero can learn from."}
+            onClick={() => hasSkillListChoices
+              ? setEditingLists(!showPicker)
+              : setDismissedMissingLists(showPicker)}
           >
-            {showPicker ? "Close lists" : "Change skill lists"}
+            {showPicker ? "Close lists" : hasSkillListChoices ? "Change skill lists" : "Choose skill lists"}
           </button>
         )}
       </div>

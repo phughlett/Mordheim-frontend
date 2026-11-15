@@ -13,10 +13,11 @@ interface LadsGotTalentPanelProps {
   options: LadsGotTalentOptions | null;
   loading: boolean;
   error: string;
+  mode?: "edit" | "promotion";
   onSave: (choices: SkillCategoryChoice[]) => Promise<void>;
 }
 
-export function LadsGotTalentPanel({ options, loading, error, onSave }: LadsGotTalentPanelProps) {
+export function LadsGotTalentPanel({ options, loading, error, mode = "edit", onSave }: LadsGotTalentPanelProps) {
   const [firstKey, setFirstKey] = useState("");
   const [secondKey, setSecondKey] = useState("");
   const [saving, setSaving] = useState(false);
@@ -49,7 +50,9 @@ export function LadsGotTalentPanel({ options, loading, error, onSave }: LadsGotT
 
   return (
     <div className="lads-got-talent-picker">
-      <p>Choose the 2 skill lists this promoted Hero may draw from (as a real Hero of this type normally could).</p>
+      <p>{mode === "promotion"
+        ? "Choose 2 skill lists for this promoted Hero."
+        : "Choose the 2 skill lists this promoted Hero may draw from (as a real Hero of this type normally could)."}</p>
       <div className="lads-got-talent-selects">
         <label className="skills-field">
           <span>LIST 1</span>
@@ -67,7 +70,8 @@ export function LadsGotTalentPanel({ options, loading, error, onSave }: LadsGotT
         </label>
       </div>
       <button className="promotion-button" type="button" disabled={options?.canChange === false || !firstKey || !secondKey || firstKey === secondKey || saving} onClick={() => void save()}>
-        {saving ? "Saving..." : selected.length === 2 ? "Update skill lists" : "Confirm skill lists"}
+        {saving ? (mode === "promotion" ? "Promoting..." : "Saving...")
+          : mode === "promotion" ? "Promote to hero" : selected.length === 2 ? "Update skill lists" : "Confirm skill lists"}
       </button>
       {error && <p className="skills-error" role="alert">{error}</p>}
       {options?.canChange === false && <p className="skills-state">These skill lists are fixed after the next battle.</p>}
